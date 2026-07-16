@@ -8,8 +8,8 @@ import { DateStrip } from '../components/DateStrip'
 import { BookCover, DiaryPhoto } from '../components/CoverImg'
 import { useBooks, updateBookPage, addQuote } from '../lib/books'
 import { pendingConfirmations } from '../lib/recurrence'
-import { useInvalidate, useUserId, useCategories, catName } from '../lib/queries'
-import { fmt, ymd, todayStr, fmtTimeHM } from '../lib/format'
+import { useInvalidate, useUserId, useCategories, catName, catIcon } from '../lib/queries'
+import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, dayStartISO, nextDayStartISO } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, Diary, MoneyEntry, Todo } from '../types'
@@ -143,8 +143,8 @@ function DayExpenseCard({ date, onOpen }: { date: string; onOpen: () => void }) 
         .from('expenses')
         .select('*')
         .eq('is_skipped', false)
-        .gte('occurred_at', date + 'T00:00:00')
-        .lte('occurred_at', date + 'T23:59:59')
+        .gte('occurred_at', dayStartISO(date))
+        .lt('occurred_at', nextDayStartISO(date))
         .order('occurred_at', { ascending: false })
       if (error) throw error
       return data as MoneyEntry[]
@@ -154,7 +154,7 @@ function DayExpenseCard({ date, onOpen }: { date: string; onOpen: () => void }) 
   const isToday = date === todayStr()
   return (
     <Card onClick={onOpen}>
-      <Label>{isToday ? '오늘' : '그날'} 소비</Label>
+      <Label>{isToday ? '오늘' : fmtDot(date)} 소비</Label>
       <div className="text-[24px] font-bold tracking-tighter tabular mt-0.5">{fmt(total)}</div>
       <div className="mt-2.5">
         {(rows ?? []).slice(0, 3).map((r) => (
@@ -162,7 +162,12 @@ function DayExpenseCard({ date, onOpen }: { date: string; onOpen: () => void }) 
             key={r.id}
             className="flex justify-between text-[12px] py-[5px] border-b border-line last:border-0"
           >
-            <span className="truncate mr-1">{r.memo || catName(cats, r.major_category_id) || '소비'}</span>
+            <span className="truncate mr-1">
+              {catIcon(cats, r.major_category_id) && (
+                <span className="mr-1">{catIcon(cats, r.major_category_id)}</span>
+              )}
+              {r.memo || catName(cats, r.major_category_id) || '소비'}
+            </span>
             <span className="tabular flex-none">{fmt(Number(r.amount))}</span>
           </div>
         ))}
@@ -202,7 +207,7 @@ function DayTodoCard({ date }: { date: string }) {
   return (
     <Card className="!p-3.5">
       <Label className="mb-2">
-        {isToday ? '오늘 할일' : '그날 할일'}
+        {isToday ? '오늘 할일' : `${fmtDot(date)} 할일`}
         {allDone && isToday && <span className="ml-1 text-[#9AA05E]">· 다 했어요 🎉</span>}
       </Label>
       {!todos?.length && <div className="text-[11px] text-sub py-1">할일이 없어요</div>}
@@ -401,16 +406,18 @@ function MemoCard() {
   )
 }
 
-// ---------------- 어제 일기 ----------------
-function YesterdayDiary() {
-  const yesterday = ymd(addDays(new Date(), -1))
+// ---------------- 일기 카드 (오늘 = 어제 일기, 과거 날짜 = 그 날짜 일기) ----------------
+function DayDiaryCard({ date }: { date: string }) {
+  const isToday = date === todayStr()
+  const target = isToday ? ymd(addDays(new Date(date + 'T00:00:00'), -1)) : date
+  const label = isToday ? '어제 일기' : `${fmtDot(target)} 일기`
   const { data: diaries } = useQuery({
-    queryKey: ['diaries', 'yesterday', yesterday],
+    queryKey: ['diaries', 'day', target],
     queryFn: async () => {
       const { data, error } = await sb()
         .from('diaries')
         .select('*')
-        .eq('entry_date', yesterday)
+        .eq('entry_date', target)
         .order('entry_time', { ascending: false, nullsFirst: false })
       if (error) throw error
       return data as Diary[]
@@ -424,7 +431,7 @@ function YesterdayDiary() {
       )}
       <div className="min-w-0 flex-1">
         <Label>
-          어제 일기
+          {label}
           {latest?.entry_time && (
             <span className="ml-1 font-semibold">{fmtTimeHM(latest.entry_time)}</span>
           )}
@@ -439,7 +446,9 @@ function YesterdayDiary() {
             {latest.content ?? '(사진 일기)'}
           </p>
         ) : (
-          <p className="mt-1 mb-0 text-[12px] text-sub">어제는 기록이 없어요</p>
+          <p className="mt-1 mb-0 text-[12px] text-sub">
+            {isToday ? '어제는 기록이 없어요' : '이 날은 기록이 없어요'}
+          </p>
         )}
       </div>
     </Card>
@@ -463,7 +472,7 @@ export default function HomePage() {
         <ReadingCard />
         <MemoCard />
       </div>
-      <YesterdayDiary />
+      <DayDiaryCard date={selDate} />
       <MoneySheet open={expenseOpen} onClose={() => setExpenseOpen(false)} />
     </div>
   )

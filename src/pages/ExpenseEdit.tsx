@@ -7,7 +7,7 @@ import { BottomSheet } from '../components/BottomSheet'
 import { MoneySheet, MoneyEditTarget } from '../components/MoneySheet'
 import { useCategories, usePaymentMethods, catName, majorsOf, minorsOf, useInvalidate, useUserId } from '../lib/queries'
 import { nextOccurrence, ensureRecurrences } from '../lib/recurrence'
-import { fmt, fmtDateKo, ymd, todayStr, commaInput, parseAmount } from '../lib/format'
+import { fmt, fmtDateKo, ymd, todayStr, commaInput, parseAmount, dayStartISO, nextDayStartISO, localDateOf } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Category, MoneyKind, MoneyEntry, PaymentMethod, RecurringRule, Saving } from '../types'
@@ -30,8 +30,8 @@ function DataEdit() {
       let q = sb()
         .from(TABLE[kind])
         .select('*')
-        .gte('occurred_at', from + 'T00:00:00')
-        .lte('occurred_at', to + 'T23:59:59')
+        .gte('occurred_at', dayStartISO(from))
+        .lt('occurred_at', nextDayStartISO(to))
         .order('occurred_at', { ascending: false })
         .limit(500)
       if (kind === 'expense') q = q.eq('is_skipped', false)
@@ -51,7 +51,7 @@ function DataEdit() {
   const grouped = useMemo(() => {
     const map = new Map<string, (MoneyEntry | Saving)[]>()
     filtered.forEach((r) => {
-      const d = r.occurred_at.slice(0, 10)
+      const d = localDateOf(r.occurred_at)
       if (!map.has(d)) map.set(d, [])
       map.get(d)!.push(r)
     })
@@ -151,6 +151,7 @@ function CategoryEdit() {
   } | null>(null)
   const [name, setName] = useState('')
   const [color, setColor] = useState<string | null>(null)
+  const [icon, setIcon] = useState('')
 
   const isPayment = tab === 'payment'
   const majors = isPayment ? [] : majorsOf(cats, tab as MoneyKind, true)
@@ -158,11 +159,13 @@ function CategoryEdit() {
   const openAdd = (parentId: string | null = null) => {
     setName('')
     setColor(PALETTE[0])
+    setIcon('')
     setSheet({ mode: 'add', parentId })
   }
   const openEdit = (target: Category | PaymentMethod) => {
     setName(target.name)
     setColor('color' in target ? target.color : null)
+    setIcon('icon' in target ? ((target as Category).icon ?? '') : '')
     setSheet({ mode: 'edit', target })
   }
 
@@ -187,10 +190,11 @@ function CategoryEdit() {
           parent_id: sheet.parentId ?? null,
           name: name.trim(),
           color: sheet.parentId ? null : color,
+          icon: icon.trim() || null,
           sort_order: majors.length,
         })
       } else if (sheet?.target) {
-        const upd: Record<string, unknown> = { name: name.trim() }
+        const upd: Record<string, unknown> = { name: name.trim(), icon: icon.trim() || null }
         if (!(sheet.target as Category).parent_id) upd.color = color
         await sb().from('categories').update(upd).eq('id', sheet.target.id)
       }
@@ -231,6 +235,7 @@ function CategoryEdit() {
         <i className="w-2.5 h-2.5 rounded flex-none" style={{ background: item.color ?? '#DDD' }} />
       )}
       <span className="flex-1 text-[13px] font-semibold cursor-pointer" onClick={() => openEdit(item)}>
+        {'icon' in item && (item as Category).icon ? `${(item as Category).icon} ` : ''}
         {item.name}
         {item.is_archived && <span className="text-[10px] text-sub ml-1">(보관됨)</span>}
       </span>
@@ -306,6 +311,16 @@ function CategoryEdit() {
         <Field label="이름">
           <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         </Field>
+        {!isPayment && (
+          <Field label="아이콘 (이모지 하나)">
+            <input
+              className={inputCls}
+              value={icon}
+              placeholder="☕️"
+              onChange={(e) => setIcon(e.target.value)}
+            />
+          </Field>
+        )}
         {!isPayment && !(sheet?.parentId) && !(sheet?.target && (sheet.target as Category).parent_id) && (
           <Field label="색상">
             <div className="flex gap-2 flex-wrap">

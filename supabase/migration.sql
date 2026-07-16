@@ -11,10 +11,13 @@ create table if not exists categories (
   parent_id uuid references categories(id) on delete cascade,
   name text not null,
   color text,
+  icon text,
   sort_order int default 0,
   is_archived boolean default false,
   created_at timestamptz default now()
 );
+-- 기존 테이블에 icon 컬럼 추가 (이미 있으면 무시)
+alter table categories add column if not exists icon text;
 
 -- 결제수단
 create table if not exists payment_methods (
@@ -206,17 +209,18 @@ create table if not exists notes (
   updated_at timestamptz default now()
 );
 
--- 월간 집계 뷰
-create or replace view v_monthly_summary
+-- 월간 집계 뷰 (KST 기준 월 경계)
+drop view if exists v_monthly_summary;
+create view v_monthly_summary
 with (security_invoker = true) as
-select user_id, date_trunc('month', occurred_at) as month,
+select user_id, date_trunc('month', occurred_at at time zone 'Asia/Seoul') as month,
        'expense' as kind, sum(amount) as total
   from expenses where is_skipped = false group by 1,2
 union all
-select user_id, date_trunc('month', occurred_at), 'income', sum(amount)
+select user_id, date_trunc('month', occurred_at at time zone 'Asia/Seoul'), 'income', sum(amount)
   from incomes group by 1,2
 union all
-select user_id, date_trunc('month', occurred_at), 'saving', sum(amount)
+select user_id, date_trunc('month', occurred_at at time zone 'Asia/Seoul'), 'saving', sum(amount)
   from savings group by 1,2;
 
 -- ============================================================

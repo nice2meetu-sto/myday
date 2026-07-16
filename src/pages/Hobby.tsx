@@ -8,7 +8,7 @@ import { BookCover, coverFallbackColor } from '../components/CoverImg'
 import { useBooks, useQuotes } from '../lib/books'
 import { uploadImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
-import { ymd, todayStr, DAY_NAMES } from '../lib/format'
+import { ymd, todayStr, DAY_NAMES, dayStartISO, nextDayStartISO, localDateOf } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, ReadingLog } from '../types'
@@ -324,8 +324,8 @@ function StatsView() {
       const { data, error } = await sb()
         .from('book_quotes')
         .select('*')
-        .gte('created_at', from + 'T00:00:00')
-        .lte('created_at', to + 'T23:59:59')
+        .gte('created_at', dayStartISO(from))
+        .lt('created_at', nextDayStartISO(to))
       if (error) throw error
       return data as BookQuote[]
     },
@@ -371,7 +371,7 @@ function StatsView() {
         cur.end = l.end_page
         byBook.set(l.book_id, cur)
       })
-    const quotes = (monthQuotes ?? []).filter((q) => q.created_at.slice(0, 10) === selDay)
+    const quotes = (monthQuotes ?? []).filter((q) => localDateOf(q.created_at) === selDay)
     return { byBook: [...byBook.entries()], quotes }
   }, [selDay, byDay, monthQuotes])
 
@@ -433,18 +433,19 @@ function StatsView() {
                 onClick={() => setSelDay(selDay === dateStr ? null : dateStr)}
               >
                 <span>{d}</span>
-                <div className="flex h-[9px]">
+                <div className="flex h-[14px]">
                   {bookIds.map((id, k) => {
                     const b = bookMap.get(id)
                     return (
-                      <i
+                      <span
                         key={id}
-                        className="w-[7px] h-[9px] rounded-[2px] shadow-[0_0_0_1px_#fff]"
-                        style={{
-                          background: b ? coverFallbackColor(b.title) : '#DDD',
-                          marginLeft: k > 0 ? -2 : 0,
-                        }}
-                      />
+                        className="block w-[10px] h-[14px] rounded-[2px] overflow-hidden shadow-[0_0_0_1px_#fff]"
+                        style={{ marginLeft: k > 0 ? -3 : 0 }}
+                      >
+                        {b && (
+                          <BookCover title={b.title} coverUrl={b.cover_url} thumb className="w-full h-full" />
+                        )}
+                      </span>
                     )
                   })}
                 </div>
@@ -461,10 +462,11 @@ function StatsView() {
               const b = bookMap.get(bookId)
               return (
                 <div key={bookId} className="flex items-center gap-2 py-1 text-[13px]">
-                  <i
-                    className="w-3.5 h-[19px] rounded-[3px] flex-none"
-                    style={{ background: b ? coverFallbackColor(b.title) : '#DDD' }}
-                  />
+                  <span className="block w-3.5 h-[19px] rounded-[3px] flex-none overflow-hidden bg-[#DDD]">
+                    {b && (
+                      <BookCover title={b.title} coverUrl={b.cover_url} thumb className="w-full h-full" />
+                    )}
+                  </span>
                   <b className="flex-1 truncate">{b?.title ?? '삭제된 책'}</b>
                   <span className="font-bold">+{v.pages}쪽</span>
                   <span className="text-sub text-[11px]">
@@ -589,6 +591,7 @@ function QuotesView() {
           <div className="mt-2.5 flex justify-between text-[11px] font-semibold text-[#9a8b70]">
             <span>
               {bookMap.get(q.book_id)?.title ?? ''}
+              {bookMap.get(q.book_id)?.author ? ` · ${bookMap.get(q.book_id)!.author}` : ''}
               {q.page ? ` · ${q.page}쪽` : ''}
             </span>
             <span>

@@ -147,12 +147,29 @@ export default function BookDetailPage() {
               </>
             )}
           </div>
-          <button
-            className="mt-3 border-0 bg-ink text-white rounded-xl px-4 py-2 text-[11px] font-bold"
-            onClick={changeStatus}
-          >
-            {statusLabel}
-          </button>
+          <div className="flex gap-1.5 mt-3 flex-wrap">
+            <button
+              className="border-0 bg-ink text-white rounded-xl px-4 py-2 text-[11px] font-bold"
+              onClick={changeStatus}
+            >
+              {statusLabel}
+            </button>
+            {book.status === 'reading' && (
+              <button
+                className="border-0 bg-[#F2F2EF] text-ink rounded-xl px-3 py-2 text-[11px] font-bold"
+                onClick={async () => {
+                  await sb()
+                    .from('books')
+                    .update({ status: 'want', started_at: null })
+                    .eq('id', book.id)
+                  invalidate(['books'])
+                  toast('읽고 싶은 책으로 옮겼어요')
+                }}
+              >
+                읽고 싶어요로
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

@@ -55,6 +55,11 @@ export function catName(cats: Category[] | undefined, id: string | null | undefi
   return (cats ?? []).find((c) => c.id === id)?.name ?? ''
 }
 
+export function catIcon(cats: Category[] | undefined, id: string | null | undefined): string {
+  if (!id) return ''
+  return (cats ?? []).find((c) => c.id === id)?.icon ?? ''
+}
+
 export function useInvalidate() {
   const qc = useQueryClient()
   return (keys: string[]) => keys.forEach((k) => qc.invalidateQueries({ queryKey: [k] }))

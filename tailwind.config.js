@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#F7F7F5',
+        bg: '#C1BDB6',
         card: '#FFFFFF',
         ink: '#111111',
         sub: '#8E8E93',
@@ -13,7 +13,7 @@ export default {
         exp: '#C7976F',
         inc: '#C7CE9A',
         hl: '#FFDE70',
-        cream: '#F5E9D7',
+        cream: '#F3EFEB',
         pale: '#E1E5C7',
         paled: '#C9CFA0',
         sage: '#CFE0D8',

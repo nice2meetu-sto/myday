@@ -185,18 +185,26 @@ export default function DiaryPage() {
           {items.map((d) => (
             <div
               key={d.id}
-              className="bg-white rounded-card overflow-hidden mb-3 shadow-card cursor-pointer"
+              className="bg-white rounded-card mb-3 shadow-card cursor-pointer p-4 flex gap-3 items-center"
               onClick={() => setDetail(d)}
             >
-              {d.photo_url && <DiaryPhoto path={d.photo_url} thumb className="h-[180px] w-full" />}
-              <div className="p-4">
+              {d.photo_url && (
+                <DiaryPhoto
+                  path={d.photo_url}
+                  thumb
+                  className="w-14 h-14 rounded-[14px] flex-none"
+                />
+              )}
+              <div className="min-w-0 flex-1">
                 {d.entry_time && (
                   <time className="text-[10px] text-sub font-bold">{fmtTimeHM(d.entry_time)}</time>
                 )}
-                {d.content && (
-                  <p className="mt-1.5 mb-0 text-[13px] leading-[1.65] text-[#333] line-clamp-3">
+                {d.content ? (
+                  <p className="mt-1 mb-0 text-[13px] leading-[1.6] text-[#333] line-clamp-3">
                     {d.content}
                   </p>
+                ) : (
+                  <p className="mt-1 mb-0 text-[12px] text-sub">(사진 일기)</p>
                 )}
               </div>
             </div>
@@ -218,12 +226,19 @@ export default function DiaryPage() {
         onClose={() => setDetail(null)}
         title={detail ? `${fmtDateKo(detail.entry_date)}${detail.entry_time ? ' · ' + fmtTimeHM(detail.entry_time) : ''}` : ''}
       >
-        {detail?.photo_url && (
-          <DiaryPhoto path={detail.photo_url} className="rounded-2xl mb-3 max-h-[50vh] w-full" />
-        )}
-        {detail?.content && (
-          <p className="text-[14px] leading-[1.7] text-[#333] whitespace-pre-wrap">{detail.content}</p>
-        )}
+        <div className="flex gap-3 items-start">
+          {detail?.photo_url && (
+            <DiaryPhoto
+              path={detail.photo_url}
+              className="w-[110px] h-[110px] rounded-2xl flex-none"
+            />
+          )}
+          {detail?.content && (
+            <p className="text-[14px] leading-[1.7] text-[#333] whitespace-pre-wrap m-0 min-w-0 flex-1">
+              {detail.content}
+            </p>
+          )}
+        </div>
         <div className="flex gap-2 mt-4">
           <button
             className="flex-1 border-0 bg-[#F6F6F3] rounded-xl text-[13px] font-bold py-3"

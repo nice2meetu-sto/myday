@@ -34,17 +34,20 @@ function useTodosMatrix() {
   return useQuery({
     queryKey: ['todos', 'matrix', today],
     queryFn: async () => {
+      // 기간(미래 포함) 상관없이 미완료는 전부 표시, 완료는 오늘 것만.
+      // 단 반복 인스턴스는 오늘까지만 (60일치 미래분이 사분면을 채우지 않게)
       const { data, error } = await sb()
         .from('todos')
         .select('*')
         .eq('is_skipped', false)
-        .or(`due_date.is.null,due_date.lte.${today}`)
         .or(`is_done.eq.false,and(is_done.eq.true,due_date.eq.${today})`)
         .order('is_done')
         .order('sort_order')
         .order('created_at')
       if (error) throw error
-      return data as Todo[]
+      return (data as Todo[]).filter(
+        (t) => !(t.template_id && t.due_date && t.due_date > today),
+      )
     },
   })
 }
@@ -94,6 +97,7 @@ export default function TodoPage() {
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [pick, setPick] = useState<PickState | null>(null)
   const [swipeMenu, setSwipeMenu] = useState<Todo | null>(null)
+  const [editTodo, setEditTodo] = useState<Todo | null>(null)
   const [editTemplate, setEditTemplate] = useState<TodoTemplate | null>(null)
   const pickRef = useRef<PickState | null>(null)
   pickRef.current = pick
@@ -247,14 +251,22 @@ export default function TodoPage() {
   }
 
   // ---------- card render ----------
-  const TodoCard = ({ t, chip = false }: { t: Todo; chip?: boolean }) => {
+  const TodoCard = ({
+    t,
+    chip = false,
+    timeRight = false,
+  }: {
+    t: Todo
+    chip?: boolean
+    timeRight?: boolean
+  }) => {
     const isPicked = pick?.todo.id === t.id
     return (
       <div
         className={`select-none transition-all ${
           chip
-            ? 'flex-none bg-white rounded-xl px-3 py-2 text-[11px] font-semibold shadow-card cursor-pointer'
-            : 'bg-[#F6F6F3] rounded-xl px-[11px] py-[9px] mb-1.5 text-[11px] font-semibold leading-snug cursor-pointer flex gap-1.5 items-start'
+            ? 'flex-none bg-[#F6F6F3] rounded-xl px-3 py-2 text-[11px] font-semibold cursor-pointer'
+            : `bg-[#F6F6F3] rounded-xl px-[11px] py-[9px] mb-1.5 text-[11px] font-semibold leading-snug cursor-pointer flex gap-1.5 ${timeRight ? 'items-center' : 'items-start'}`
         } ${t.is_done ? '!bg-transparent text-[#C4C4C0] line-through font-medium' : ''} ${
           isPicked && !pick?.dragging ? 'scale-[1.04] !bg-white shadow-lg outline outline-2 outline-paled no-underline' : ''
         } ${isPicked && pick?.dragging ? 'opacity-25' : ''}`}
@@ -265,10 +277,15 @@ export default function TodoPage() {
         }}
       >
         {t.template_id && <i className="not-italic text-[#9AA05E] text-[9px] mt-px flex-none">↻</i>}
-        <span>
+        <span className={timeRight ? 'flex-1' : ''}>
           {t.content}
-          {t.due_time && <span className="text-sub ml-1">{fmtTimeHM(t.due_time)}</span>}
+          {t.due_time && !timeRight && (
+            <span className="text-sub ml-1">{fmtTimeHM(t.due_time)}</span>
+          )}
         </span>
+        {timeRight && t.due_time && (
+          <span className="text-sub text-[10px] flex-none tabular">{fmtTimeHM(t.due_time)}</span>
+        )}
       </div>
     )
   }
@@ -308,7 +325,7 @@ export default function TodoPage() {
             <div
               key={q.key}
               data-quad={q.key}
-              className={`quad bg-white rounded-[18px] p-2.5 min-h-[132px] shadow-card transition-colors ${
+              className={`quad bg-white rounded-[18px] p-2.5 min-h-[176px] shadow-card transition-colors ${
                 isHover ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
               }`}
               onClick={(e) => {
@@ -408,18 +425,23 @@ export default function TodoPage() {
           })}
         </div>
       </div>
+      {(noDateTodos?.length ?? 0) > 0 && (
+        <>
+          <h3 className="text-[13px] font-extrabold mx-0.5 mt-4 mb-2">기간 미정</h3>
+          <Card className="!p-3">
+            <div className="flex gap-[7px] flex-wrap">
+              {(noDateTodos ?? []).map((t) => (
+                <TodoCard key={t.id} t={t} chip />
+              ))}
+            </div>
+          </Card>
+        </>
+      )}
       <h3 className="text-[13px] font-extrabold mx-0.5 mt-4 mb-2">{fmtDateKo(selDate)}</h3>
       <Card className="!p-3">
         {!dayList.length && <EmptyState>이 날은 할일이 없어요</EmptyState>}
         {dayList.map((t) => (
-          <TodoCard key={t.id} t={t} />
-        ))}
-      </Card>
-      <h3 className="text-[13px] font-extrabold mx-0.5 mt-4 mb-2">기간 미정</h3>
-      <Card className="!p-3">
-        {!noDateTodos?.length && <EmptyState>기간 미정 할일이 없어요</EmptyState>}
-        {(noDateTodos ?? []).map((t) => (
-          <TodoCard key={t.id} t={t} />
+          <TodoCard key={t.id} t={t} timeRight />
         ))}
       </Card>
     </>
@@ -461,9 +483,14 @@ export default function TodoPage() {
       )}
 
       <TodoSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <TodoSheet open={!!editTodo} onClose={() => setEditTodo(null)} edit={editTodo} />
       <SwipeMenuSheet
         todo={swipeMenu}
         onClose={() => setSwipeMenu(null)}
+        onEditTodo={(t) => {
+          setSwipeMenu(null)
+          setEditTodo(t)
+        }}
         onEditTemplate={(tpl) => {
           setSwipeMenu(null)
           setEditTemplate(tpl)
@@ -482,8 +509,16 @@ export default function TodoPage() {
   )
 }
 
-// ---------------- 할일 입력 시트 ----------------
-function TodoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+// ---------------- 할일 입력/수정 시트 ----------------
+function TodoSheet({
+  open,
+  onClose,
+  edit,
+}: {
+  open: boolean
+  onClose: () => void
+  edit?: Todo | null
+}) {
   const userId = useUserId()
   const invalidate = useInvalidate()
   const [content, setContent] = useState('')
@@ -494,10 +529,41 @@ function TodoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [freq, setFreq] = useState<'daily' | 'weekly' | 'monthly'>('daily')
   const [weekdays, setWeekdays] = useState<number[]>([])
   const [monthday, setMonthday] = useState('1')
+  const loaded = useRef<string | null>(null)
+
+  if (open && edit && loaded.current !== edit.id) {
+    loaded.current = edit.id
+    setContent(edit.content)
+    setQuadrant(edit.quadrant)
+    setDueDate(edit.due_date ?? '')
+    setDueTime(edit.due_time?.slice(0, 5) ?? '')
+    setRepeat(false)
+  }
+  if (!open && loaded.current) loaded.current = null
 
   const save = async () => {
     if (!content.trim()) {
       toast('내용을 입력해주세요')
+      return
+    }
+    if (edit) {
+      const { error } = await sb()
+        .from('todos')
+        .update({
+          content: content.trim(),
+          quadrant,
+          due_date: dueDate || null,
+          due_time: dueTime || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', edit.id)
+      if (error) {
+        toastError('저장 실패', error)
+        return
+      }
+      invalidate(['todos'])
+      toast('수정했어요')
+      onClose()
       return
     }
     if (repeat) {
@@ -543,7 +609,7 @@ function TodoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="할일 추가">
+    <BottomSheet open={open} onClose={onClose} title={edit ? '할일 수정' : '할일 추가'}>
       <Field label="내용">
         <input className={inputCls} value={content} onChange={(e) => setContent(e.target.value)} autoFocus />
       </Field>
@@ -563,10 +629,12 @@ function TodoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           <input type="time" className={inputCls} value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
         </Field>
       </div>
-      <label className="flex items-center justify-between text-[12px] font-bold py-1 mb-2">
-        <span>반복</span>
-        <input type="checkbox" className="w-5 h-5 accent-ink" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
-      </label>
+      {!edit && (
+        <label className="flex items-center justify-between text-[12px] font-bold py-1 mb-2">
+          <span>반복</span>
+          <input type="checkbox" className="w-5 h-5 accent-ink" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
+        </label>
+      )}
       {repeat && (
         <div className="bg-[#FAFAF8] rounded-xl p-3 mb-3">
           <SegmentedControl
@@ -618,10 +686,12 @@ function TodoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 function SwipeMenuSheet({
   todo,
   onClose,
+  onEditTodo,
   onEditTemplate,
 }: {
   todo: Todo | null
   onClose: () => void
+  onEditTodo: (t: Todo) => void
   onEditTemplate: (tpl: TodoTemplate) => void
 }) {
   const userId = useUserId()
@@ -663,6 +733,9 @@ function SwipeMenuSheet({
   const btn = 'w-full border-0 bg-[#F6F6F3] rounded-xl text-[13px] font-bold py-3 mb-2'
   return (
     <BottomSheet open={!!todo} onClose={onClose} title={todo?.content ?? ''}>
+      <button className={btn} onClick={() => todo && onEditTodo(todo)}>
+        수정
+      </button>
       <button className={btn} onClick={deleteOne}>
         {todo?.template_id ? '이 할일만 삭제' : '삭제'}
       </button>

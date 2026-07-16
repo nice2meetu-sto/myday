@@ -2,10 +2,25 @@ import { sb } from './supabase'
 
 const PALETTE = ['#C7976F', '#FFDE70', '#A3C4EB', '#D0BC98', '#C7CE9A']
 
-const DEFAULTS: Record<'expense' | 'income' | 'saving', string[]> = {
-  expense: ['식비', '교통', '주거', '문화', '쇼핑', '기타'],
-  income: ['급여', '부수입', '기타'],
-  saving: ['적금', '투자', '비상금'],
+const DEFAULTS: Record<'expense' | 'income' | 'saving', [string, string][]> = {
+  expense: [
+    ['식비', '🍚'],
+    ['교통', '🚌'],
+    ['주거', '🏠'],
+    ['문화', '🎬'],
+    ['쇼핑', '🛍️'],
+    ['기타', '📦'],
+  ],
+  income: [
+    ['급여', '💰'],
+    ['부수입', '💵'],
+    ['기타', '📦'],
+  ],
+  saving: [
+    ['적금', '🏦'],
+    ['투자', '📈'],
+    ['비상금', '🚑'],
+  ],
 }
 
 const DEFAULT_PAYMENTS = ['신용카드', '체크카드', '현금', '계좌이체']
@@ -18,11 +33,12 @@ export async function seedDefaults(userId: string) {
   if ((count ?? 0) === 0) {
     const rows: Record<string, unknown>[] = []
     ;(Object.keys(DEFAULTS) as (keyof typeof DEFAULTS)[]).forEach((kind) => {
-      DEFAULTS[kind].forEach((name, i) => {
+      DEFAULTS[kind].forEach(([name, icon], i) => {
         rows.push({
           user_id: userId,
           kind,
           name,
+          icon,
           color: PALETTE[i % PALETTE.length],
           sort_order: i,
         })

@@ -370,7 +370,6 @@ function SavingsView({ anchor }: { anchor: Date }) {
 export default function ExpensePage() {
   const nav = useNavigate()
   const [mode, setMode] = useState<'month' | 'year'>('month')
-  const [view, setView] = useState<'expense' | 'saving'>('expense')
   const [anchor, setAnchor] = useState(() => new Date())
   const [sheetOpen, setSheetOpen] = useState(false)
 
@@ -406,50 +405,37 @@ export default function ExpensePage() {
         }
       />
       <SegmentedControl
-        className="mb-3"
+        className="mb-3.5"
         options={[
-          { value: 'expense', label: '소비' },
-          { value: 'saving', label: '저축' },
+          { value: 'month', label: '월' },
+          { value: 'year', label: '연' },
         ]}
-        value={view}
-        onChange={setView}
+        value={mode}
+        onChange={setMode}
       />
-      {view === 'expense' && (
-        <>
-          <SegmentedControl
-            className="mb-3.5"
-            options={[
-              { value: 'month', label: '월' },
-              { value: 'year', label: '연' },
-            ]}
-            value={mode}
-            onChange={setMode}
-          />
-          <PeriodNav label={label} onPrev={() => move(-1)} onNext={() => move(1)} />
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <Card>
-              <Label>소비</Label>
-              <StatNumber size="sm" value={sumAmount(expenses)} />
-              <DeltaLine cur={sumAmount(expenses)} prev={sumAmount(prevExpenses)} label={unit} />
-            </Card>
-            <Card>
-              <Label>수입</Label>
-              <StatNumber size="sm" value={sumAmount(incomes)} />
-              <DeltaLine cur={sumAmount(incomes)} prev={sumAmount(prevIncomes)} label={unit} />
-            </Card>
-          </div>
-          {mode === 'month' && <BudgetCard anchor={anchor} spent={sumAmount(expenses)} />}
-          <Donut title="카테고리별 소비" rows={(expenses ?? []) as MoneyEntry[]} kind="expense" />
-          <Donut title="카테고리별 수입" rows={(incomes ?? []) as MoneyEntry[]} kind="income" />
-          <Card className="mb-3">
-            <Label>{mode === 'month' ? '이번달' : '올해'} 저축</Label>
-            <StatNumber size="sm" value={sumAmount(savings)} />
-            <DeltaLine cur={sumAmount(savings)} prev={sumAmount(prevSavings)} label={unit} />
-          </Card>
-          <TrendChart mode={mode} anchor={anchor} />
-        </>
-      )}
-      {view === 'saving' && <SavingsView anchor={anchor} />}
+      <PeriodNav label={label} onPrev={() => move(-1)} onNext={() => move(1)} />
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <Card>
+          <Label>소비</Label>
+          <StatNumber size="sm" value={sumAmount(expenses)} />
+          <DeltaLine cur={sumAmount(expenses)} prev={sumAmount(prevExpenses)} label={unit} />
+        </Card>
+        <Card>
+          <Label>수입</Label>
+          <StatNumber size="sm" value={sumAmount(incomes)} />
+          <DeltaLine cur={sumAmount(incomes)} prev={sumAmount(prevIncomes)} label={unit} />
+        </Card>
+      </div>
+      {mode === 'month' && <BudgetCard anchor={anchor} spent={sumAmount(expenses)} />}
+      <Donut title="카테고리별 소비" rows={(expenses ?? []) as MoneyEntry[]} kind="expense" />
+      <Donut title="카테고리별 수입" rows={(incomes ?? []) as MoneyEntry[]} kind="income" />
+      <Card className="mb-3">
+        <Label>{mode === 'month' ? '이번달' : '올해'} 저축</Label>
+        <StatNumber size="sm" value={sumAmount(savings)} />
+        <DeltaLine cur={sumAmount(savings)} prev={sumAmount(prevSavings)} label={unit} />
+      </Card>
+      <TrendChart mode={mode} anchor={anchor} />
+      <SavingsView anchor={anchor} />
       <MoneySheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </div>
   )

@@ -7,7 +7,7 @@ import {
   lastDayOfMonth,
 } from 'date-fns'
 import { sb } from './supabase'
-import { ymd, todayStr } from './format'
+import { ymd, todayStr, localDateOf } from './format'
 import type { RecurringRule, TodoTemplate } from '../types'
 
 const HORIZON_DAYS = 60
@@ -158,9 +158,9 @@ export async function ensureRecurrences(userId: string) {
       .from(table)
       .select('occurred_at')
       .eq('recurring_id', r.id)
-      .gte('occurred_at', ymd(from) + 'T00:00:00')
+      .gte('occurred_at', from.toISOString())
     const existingDates = new Set(
-      (existing ?? []).map((e: { occurred_at: string }) => e.occurred_at.slice(0, 10)),
+      (existing ?? []).map((e: { occurred_at: string }) => localDateOf(e.occurred_at)),
     )
     const missing = dates.filter((d) => !existingDates.has(d))
     if (!missing.length) continue
@@ -205,9 +205,9 @@ export async function pendingConfirmations(): Promise<
       .from(table)
       .select('occurred_at')
       .eq('recurring_id', r.id)
-      .gte('occurred_at', ymd(from) + 'T00:00:00')
+      .gte('occurred_at', from.toISOString())
     const existingDates = new Set(
-      (existing ?? []).map((e: { occurred_at: string }) => e.occurred_at.slice(0, 10)),
+      (existing ?? []).map((e: { occurred_at: string }) => localDateOf(e.occurred_at)),
     )
     for (const d of dates) {
       if (!existingDates.has(d)) out.push({ rule: r, date: d })
