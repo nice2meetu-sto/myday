@@ -4,7 +4,7 @@ import { ChipRow, Field, inputCls, SaveButton, SegmentedControl } from './common
 import { useCategories, usePaymentMethods, majorsOf, minorsOf, useInvalidate, useUserId } from '../lib/queries'
 import { commaInput, parseAmount } from '../lib/format'
 import { sb } from '../lib/supabase'
-import { toast } from '../stores/ui'
+import { toast, toastError } from '../stores/ui'
 import type { MoneyKind, MoneyEntry, Saving } from '../types'
 
 const TABLE: Record<MoneyKind, string> = {
@@ -130,14 +130,14 @@ export function MoneySheet({
     if (isEdit && edit) {
       const { error } = await sb().from(TABLE[edit.kind]).update(base).eq('id', edit.entry.id)
       if (error) {
-        toast('저장에 실패했어요')
+        toastError('저장 실패', error)
         return
       }
     } else {
       base.user_id = userId
       const { error } = await sb().from(TABLE[kind]).insert(base)
       if (error) {
-        toast('저장에 실패했어요')
+        toastError('저장 실패', error)
         return
       }
       if (kind === 'expense' && pm) localStorage.setItem('myday-last-pm', pm)

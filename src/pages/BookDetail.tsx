@@ -7,7 +7,7 @@ import { deleteImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { todayStr } from '../lib/format'
 import { sb } from '../lib/supabase'
-import { toast } from '../stores/ui'
+import { toast, toastError } from '../stores/ui'
 
 export default function BookDetailPage() {
   const { bookId } = useParams()
@@ -32,14 +32,24 @@ export default function BookDetailPage() {
 
   const commitPage = async (v: number) => {
     if (v === book.current_page) return
-    await updateBookPage(userId, book, v)
+    try {
+      await updateBookPage(userId, book, v)
+    } catch (e) {
+      toastError('저장 실패', e)
+      return
+    }
     invalidate(['books', 'reading_logs'])
     toast('쪽수를 저장했어요')
   }
 
   const saveQuote = async () => {
     if (!quoteText.trim()) return
-    await addQuote(userId, book.id, quoteText.trim(), parseInt(quotePage, 10) || null)
+    try {
+      await addQuote(userId, book.id, quoteText.trim(), parseInt(quotePage, 10) || null)
+    } catch (e) {
+      toastError('저장 실패', e)
+      return
+    }
     invalidate(['quotes'])
     setQuoteText('')
     setQuotePage('')

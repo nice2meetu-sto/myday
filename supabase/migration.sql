@@ -239,18 +239,31 @@ end $$;
 
 -- ============================================================
 -- Storage 버킷 (private) + 정책
+-- 주의: 프로젝트에 따라 SQL로 storage 정책 생성이 권한 오류가 날 수 있어
+-- 실패해도 전체가 롤백되지 않도록 예외 처리로 감쌌다.
+-- 아래 NOTICE가 뜨면 대시보드 → Storage → Policies에서 수동으로 만들면 된다.
 -- ============================================================
-insert into storage.buckets (id, name, public) values ('covers','covers', false)
-  on conflict (id) do nothing;
-insert into storage.buckets (id, name, public) values ('diary','diary', false)
-  on conflict (id) do nothing;
+do $$
+begin
+  insert into storage.buckets (id, name, public) values ('covers','covers', false)
+    on conflict (id) do nothing;
+  insert into storage.buckets (id, name, public) values ('diary','diary', false)
+    on conflict (id) do nothing;
+exception when others then
+  raise notice 'Storage 버킷 생성 실패 — 대시보드 → Storage에서 covers, diary 버킷(private)을 직접 만들어주세요: %', sqlerrm;
+end $$;
 
-drop policy if exists "own covers" on storage.objects;
-create policy "own covers" on storage.objects for all
-  using (bucket_id = 'covers' and (storage.foldername(name))[1] = auth.uid()::text)
-  with check (bucket_id = 'covers' and (storage.foldername(name))[1] = auth.uid()::text);
+do $$
+begin
+  drop policy if exists "own covers" on storage.objects;
+  create policy "own covers" on storage.objects for all
+    using (bucket_id = 'covers' and (storage.foldername(name))[1] = auth.uid()::text)
+    with check (bucket_id = 'covers' and (storage.foldername(name))[1] = auth.uid()::text);
 
-drop policy if exists "own diary" on storage.objects;
-create policy "own diary" on storage.objects for all
-  using (bucket_id = 'diary' and (storage.foldername(name))[1] = auth.uid()::text)
-  with check (bucket_id = 'diary' and (storage.foldername(name))[1] = auth.uid()::text);
+  drop policy if exists "own diary" on storage.objects;
+  create policy "own diary" on storage.objects for all
+    using (bucket_id = 'diary' and (storage.foldername(name))[1] = auth.uid()::text)
+    with check (bucket_id = 'diary' and (storage.foldername(name))[1] = auth.uid()::text);
+exception when others then
+  raise notice 'Storage 정책 생성 실패 — 대시보드 → Storage → Policies에서 authenticated 사용자의 모든 작업을 허용하는 정책을 covers/diary 버킷에 직접 만들어주세요: %', sqlerrm;
+end $$;

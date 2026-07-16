@@ -61,21 +61,24 @@ export async function updateBookPage(userId: string, book: Book, newPage: number
     patch.status = 'reading'
     patch.started_at = todayStr()
   }
-  await sb().from('books').update(patch).eq('id', book.id)
-  await sb().from('reading_logs').insert({
+  const r1 = await sb().from('books').update(patch).eq('id', book.id)
+  if (r1.error) throw r1.error
+  const r2 = await sb().from('reading_logs').insert({
     user_id: userId,
     book_id: book.id,
     log_date: todayStr(),
     end_page: newPage,
     pages_read: pagesRead,
   })
+  if (r2.error) throw r2.error
 }
 
 export async function addQuote(userId: string, bookId: string, content: string, page: number | null) {
-  await sb().from('book_quotes').insert({
+  const { error } = await sb().from('book_quotes').insert({
     user_id: userId,
     book_id: bookId,
     content,
     page,
   })
+  if (error) throw error
 }

@@ -10,7 +10,7 @@ import { uploadImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { ymd, todayStr, DAY_NAMES } from '../lib/format'
 import { sb } from '../lib/supabase'
-import { toast } from '../stores/ui'
+import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, ReadingLog } from '../types'
 
 // ---------------- 책 추가 시트 ----------------
@@ -56,7 +56,7 @@ function AddBookSheet({ open, onClose }: { open: boolean; onClose: () => void })
     })
     setBusy(false)
     if (error) {
-      toast('저장에 실패했어요')
+      toastError('저장 실패', error)
       return
     }
     invalidate(['books'])

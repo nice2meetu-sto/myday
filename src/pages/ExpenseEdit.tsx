@@ -9,7 +9,7 @@ import { useCategories, usePaymentMethods, catName, majorsOf, minorsOf, useInval
 import { nextOccurrence, ensureRecurrences } from '../lib/recurrence'
 import { fmt, fmtDateKo, ymd, todayStr, commaInput, parseAmount } from '../lib/format'
 import { sb } from '../lib/supabase'
-import { toast } from '../stores/ui'
+import { toast, toastError } from '../stores/ui'
 import type { Category, MoneyKind, MoneyEntry, PaymentMethod, RecurringRule, Saving } from '../types'
 
 const TABLE: Record<MoneyKind, string> = { expense: 'expenses', income: 'incomes', saving: 'savings' }
@@ -442,14 +442,14 @@ function RecurringEdit() {
     if (editing === 'new') {
       const { error } = await sb().from('recurring_rules').insert({ ...row, user_id: userId })
       if (error) {
-        toast('저장에 실패했어요')
+        toastError('저장 실패', error)
         return
       }
       await ensureRecurrences(userId)
     } else if (editing) {
       const { error } = await sb().from('recurring_rules').update(row).eq('id', editing.id)
       if (error) {
-        toast('저장에 실패했어요')
+        toastError('저장 실패', error)
         return
       }
       await refreshFuture(editing.id, editing.kind)

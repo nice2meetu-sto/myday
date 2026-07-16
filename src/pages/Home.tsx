@@ -11,7 +11,7 @@ import { pendingConfirmations } from '../lib/recurrence'
 import { useInvalidate, useUserId, useCategories, catName } from '../lib/queries'
 import { fmt, ymd, todayStr, fmtTimeHM } from '../lib/format'
 import { sb } from '../lib/supabase'
-import { toast } from '../stores/ui'
+import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, Diary, MoneyEntry, Todo } from '../types'
 
 // ---------------- 날씨 (서울 고정, Open-Meteo) ----------------
@@ -268,13 +268,18 @@ function ReadingCard() {
   const save = async () => {
     const p = parseInt(pageInput.replace(/[^0-9]/g, ''), 10)
     let saved = false
-    if (p && p !== book.current_page) {
-      await updateBookPage(userId, book, p)
-      saved = true
-    }
-    if (quoteInput.trim()) {
-      await addQuote(userId, book.id, quoteInput.trim(), parseInt(quotePage, 10) || null)
-      saved = true
+    try {
+      if (p && p !== book.current_page) {
+        await updateBookPage(userId, book, p)
+        saved = true
+      }
+      if (quoteInput.trim()) {
+        await addQuote(userId, book.id, quoteInput.trim(), parseInt(quotePage, 10) || null)
+        saved = true
+      }
+    } catch (e) {
+      toastError('저장 실패', e)
+      return
     }
     if (!saved) {
       toast('변경된 내용이 없어요')

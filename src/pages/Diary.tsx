@@ -7,7 +7,7 @@ import { uploadImage, deleteImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { fmtDateKo, fmtTimeHM, todayStr } from '../lib/format'
 import { sb } from '../lib/supabase'
-import { toast } from '../stores/ui'
+import { toast, toastError } from '../stores/ui'
 import type { Diary } from '../types'
 
 const PAGE = 30
@@ -90,12 +90,16 @@ function DiarySheet({
       updated_at: new Date().toISOString(),
     }
     if (photoPath !== undefined) row.photo_url = photoPath
-    if (edit) {
-      await sb().from('diaries').update(row).eq('id', edit.id)
-    } else {
-      await sb().from('diaries').insert({ ...row, user_id: userId, photo_url: photoPath ?? null })
-    }
+    const { error } = edit
+      ? await sb().from('diaries').update(row).eq('id', edit.id)
+      : await sb()
+          .from('diaries')
+          .insert({ ...row, user_id: userId, photo_url: photoPath ?? null })
     setBusy(false)
+    if (error) {
+      toastError('저장 실패', error)
+      return
+    }
     invalidate(['diaries'])
     toast(edit ? '수정했어요' : '일기를 기록했어요')
     onClose()

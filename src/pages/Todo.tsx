@@ -7,7 +7,7 @@ import { useInvalidate, useUserId } from '../lib/queries'
 import { ensureRecurrences } from '../lib/recurrence'
 import { ymd, todayStr, fmtDateKo, DAY_NAMES, fmtTimeHM } from '../lib/format'
 import { sb } from '../lib/supabase'
-import { toast } from '../stores/ui'
+import { toast, toastError } from '../stores/ui'
 import type { Quadrant, Todo, TodoTemplate } from '../types'
 
 const QUADS: { key: Quadrant; label: string; hi?: boolean }[] = [
@@ -515,7 +515,7 @@ function TodoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
           starts_on: dueDate || todayStr(),
         })
       if (error) {
-        toast('저장에 실패했어요')
+        toastError('저장 실패', error)
         return
       }
       await ensureRecurrences(userId)
@@ -528,7 +528,7 @@ function TodoSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
         due_time: dueTime || null,
       })
       if (error) {
-        toast('저장에 실패했어요')
+        toastError('저장 실패', error)
         return
       }
     }
