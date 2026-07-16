@@ -220,6 +220,16 @@ select user_id, date_trunc('month', occurred_at), 'saving', sum(amount)
   from savings group by 1,2;
 
 -- ============================================================
+-- 권한(GRANT): 앱 역할이 테이블에 접근할 수 있게
+-- (행 단위 보호는 아래 RLS가 담당)
+-- ============================================================
+grant usage on schema public to anon, authenticated;
+grant all on all tables in schema public to anon, authenticated;
+grant all on all sequences in schema public to anon, authenticated;
+alter default privileges in schema public grant all on tables to anon, authenticated;
+alter default privileges in schema public grant all on sequences to anon, authenticated;
+
+-- ============================================================
 -- RLS: 모든 테이블 활성화 + 본인 데이터만
 -- ============================================================
 do $$
