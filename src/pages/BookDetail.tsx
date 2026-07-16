@@ -123,7 +123,7 @@ export default function BookDetailPage() {
       </div>
 
       <div className="flex gap-4 mb-3">
-        <BookCover title={book.title} coverUrl={book.cover_url} className="w-[110px] h-[164px] rounded-[10px] shadow-[0_10px_26px_rgba(0,0,0,.18)] flex-none" />
+        <BookCover title={book.title} coverUrl={book.cover_url} className="w-[110px] h-[164px] rounded-[10px] flex-none" />
         <div className="flex-1 pt-1">
           <div className="text-[15px] font-extrabold leading-snug">{book.title}</div>
           {book.author && <div className="text-[12px] text-sub font-semibold mt-1">{book.author}</div>}

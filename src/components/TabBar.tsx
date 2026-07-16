@@ -14,8 +14,8 @@ export function TabBar() {
   const isActive = (p: string) =>
     p === '/' ? pathname === '/' : pathname.startsWith(p)
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 px-3 pb-[26px] pt-2 bg-gradient-to-b from-transparent via-bg/80 to-bg pointer-events-none">
-      <div className="mx-auto max-w-[420px] bg-white rounded-[26px] p-[5px] flex shadow-[0_4px_24px_rgba(0,0,0,.09)] pointer-events-auto">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 px-3 pb-[26px] pt-2 pointer-events-none">
+      <div className="mx-auto max-w-[420px] bg-white rounded-[26px] p-[5px] flex pointer-events-auto">
         {TABS.map((t) => (
           <button
             key={t.path}

@@ -236,7 +236,7 @@ function ShelfView() {
               className="flex-none w-32 snap-center cursor-pointer select-none"
               onClick={() => nav(`/hobby/${b.id}`)}
             >
-              <BookCover title={b.title} coverUrl={b.cover_url} className="w-32 h-[190px] rounded-[10px] shadow-[0_10px_26px_rgba(0,0,0,.18)]" />
+              <BookCover title={b.title} coverUrl={b.cover_url} className="w-32 h-[190px] rounded-[10px]" />
               <p className="mt-2 mb-0.5 text-[12px] font-bold tracking-tight truncate">{b.title}</p>
               <small className="text-[10px] text-sub">
                 {pct}% · {b.current_page}쪽
