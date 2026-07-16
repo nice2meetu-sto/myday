@@ -706,20 +706,31 @@ function TodoSheet({
           onChange={setQuadrant}
         />
       </Field>
-      <div className="flex gap-2">
-        <Field label="일자 (선택)">
-          <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-        </Field>
-        <Field label="시간 (선택)">
-          <input type="time" className={inputCls} value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
-        </Field>
+      <div className="flex gap-2 items-end">
+        <div className="flex-1">
+          <Field label="일자 (선택)">
+            <input type="date" className={inputCls} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </Field>
+        </div>
+        <div className="flex-1">
+          <Field label="시간 (선택)">
+            <input type="time" className={inputCls} value={dueTime} onChange={(e) => setDueTime(e.target.value)} />
+          </Field>
+        </div>
+        {!edit && (
+          <div className="flex-none mb-3">
+            <label className="block text-[11px] text-sub font-bold mb-1.5 text-center">반복</label>
+            <div className="h-[44px] flex items-center justify-center px-1">
+              <input
+                type="checkbox"
+                className="w-5 h-5 accent-acc"
+                checked={repeat}
+                onChange={(e) => setRepeat(e.target.checked)}
+              />
+            </div>
+          </div>
+        )}
       </div>
-      {!edit && (
-        <label className="flex items-center justify-between text-[12px] font-bold py-1 mb-2">
-          <span>반복</span>
-          <input type="checkbox" className="w-5 h-5 accent-acc" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
-        </label>
-      )}
       {repeat && (
         <div className="bg-[#FAFAF8] rounded-xl p-3 mb-3">
           <SegmentedControl

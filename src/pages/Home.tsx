@@ -304,7 +304,7 @@ function ReadingCard() {
 
   if (!book)
     return (
-      <Card className="h-[120px] overflow-hidden">
+      <Card className="h-[130px] overflow-hidden">
         <Label>읽는 중</Label>
         <EmptyState>읽는 중인 책이 없어요</EmptyState>
       </Card>
@@ -344,7 +344,7 @@ function ReadingCard() {
   return (
     <>
       <Card
-        className="h-[120px] overflow-hidden !p-3.5"
+        className="h-[130px] overflow-hidden !p-3.5"
         onClick={() => {
           setPageInput(String(book.current_page))
           setOpen(true)
@@ -352,8 +352,8 @@ function ReadingCard() {
       >
         <Label>읽는 중</Label>
         <div className="flex gap-2.5 mt-1 items-center">
-          <BookCover title={book.title} coverUrl={book.cover_url} thumb className="w-8 h-[46px] rounded-md flex-none shadow-card" />
-          <div className="min-w-0">
+          <BookCover title={book.title} coverUrl={book.cover_url} thumb className="w-9 h-[54px] rounded-md flex-none shadow-card" />
+          <div className="min-w-0 flex-1">
             <div className="text-[13px] font-bold leading-snug truncate">{book.title}</div>
             <div className="text-[11px] text-sub mt-1 tabular">
               {book.current_page}
@@ -439,7 +439,7 @@ function MemoCard() {
   }
 
   return (
-    <Card className="!p-3.5 h-[120px] flex flex-col overflow-hidden">
+    <Card className="!p-3.5 h-[130px] flex flex-col overflow-hidden">
       <Label>메모</Label>
       <textarea
         className="w-full border-0 outline-none resize-none text-[13px] text-[#555] leading-relaxed mt-1.5 flex-1 bg-transparent overflow-y-auto"
@@ -470,9 +470,9 @@ function DayDiaryCard({ date }: { date: string }) {
   })
   const latest = diaries?.[0]
   return (
-    <Card className="flex gap-3 items-center !p-3 h-[104px] overflow-hidden">
+    <Card className="flex gap-3 items-center !p-3 h-[100px] overflow-hidden">
       {latest?.photo_url && (
-        <DiaryPhoto path={latest.photo_url} thumb className="w-14 h-14 rounded-[14px] flex-none" />
+        <DiaryPhoto path={latest.photo_url} thumb className="w-[72px] h-[72px] rounded-[14px] flex-none" />
       )}
       <div className="min-w-0 flex-1 h-full flex flex-col py-0.5">
         <Label className="flex-none">
