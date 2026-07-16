@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#DBD7B2',
+        bg: '#EDEBD8',
         card: '#FFFFFF',
         ink: '#111111',
         sub: '#8E8E93',

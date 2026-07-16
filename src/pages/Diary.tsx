@@ -1,12 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { addMonths, endOfMonth, format, startOfMonth } from 'date-fns'
 import { motion } from 'framer-motion'
-import { AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, popIn } from '../components/common'
+import { AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, popIn, PeriodNav } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { DiaryPhoto } from '../components/CoverImg'
 import { uploadImage, deleteImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
-import { fmtDateKo, fmtTimeHM, todayStr } from '../lib/format'
+import { fmtDateKo, fmtTimeHM, todayStr, ymd, DAY_NAMES } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Diary } from '../types'
@@ -147,6 +148,94 @@ function DiarySheet({
   )
 }
 
+// ---------------- 월별 사진 달력 ----------------
+function DiaryCalendar({ onPick }: { onPick: (d: Diary) => void }) {
+  const [anchor, setAnchor] = useState(() => new Date())
+  const from = ymd(startOfMonth(anchor))
+  const to = ymd(endOfMonth(anchor))
+  const { data: monthDiaries } = useQuery({
+    queryKey: ['diaries', 'cal', from],
+    queryFn: async () => {
+      const { data, error } = await sb()
+        .from('diaries')
+        .select('*')
+        .gte('entry_date', from)
+        .lte('entry_date', to)
+        .order('entry_time', { ascending: false, nullsFirst: false })
+      if (error) throw error
+      return data as Diary[]
+    },
+  })
+
+  const byDate = useMemo(() => {
+    const map = new Map<string, Diary[]>()
+    ;(monthDiaries ?? []).forEach((d) => {
+      if (!map.has(d.entry_date)) map.set(d.entry_date, [])
+      map.get(d.entry_date)!.push(d)
+    })
+    return map
+  }, [monthDiaries])
+
+  const firstWeekday = startOfMonth(anchor).getDay()
+  const daysInMonth = endOfMonth(anchor).getDate()
+
+  return (
+    <motion.div {...popIn} className="bg-white rounded-card p-4 mb-3">
+      <PeriodNav
+        label={format(anchor, 'yyyy년 M월')}
+        onPrev={() => setAnchor(addMonths(anchor, -1))}
+        onNext={() => setAnchor(addMonths(anchor, 1))}
+      />
+      <div className="grid grid-cols-7 gap-0.5 mb-1.5">
+        {DAY_NAMES.map((d) => (
+          <span key={d} className="text-center text-[9px] text-sub font-bold">
+            {d}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-0.5">
+        {Array.from({ length: firstWeekday }).map((_, i) => (
+          <div key={`e${i}`} className="aspect-square" />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1
+          const dateStr = ymd(new Date(anchor.getFullYear(), anchor.getMonth(), day))
+          const entries = byDate.get(dateStr) ?? []
+          const withPhoto = entries.find((e) => e.photo_url)
+          return (
+            <div
+              key={day}
+              className="aspect-square relative rounded-[9px] overflow-hidden cursor-pointer flex items-center justify-center text-[11px] font-semibold"
+              onClick={() => entries.length && onPick(entries[0])}
+            >
+              {withPhoto ? (
+                <>
+                  {/* 일기 쓴 날: 칸 가득 사진 */}
+                  <DiaryPhoto path={withPhoto.photo_url} thumb className="absolute inset-0 w-full h-full" />
+                  <span className="absolute top-0.5 left-1 text-[9px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">
+                    {day}
+                  </span>
+                  {entries.length > 1 && (
+                    <span className="absolute bottom-0.5 right-1 text-[8px] font-bold text-white bg-black/45 rounded px-1">
+                      +{entries.length - 1}
+                    </span>
+                  )}
+                </>
+              ) : entries.length ? (
+                <div className="absolute inset-0 bg-sage flex items-center justify-center">
+                  <span className="text-[11px] font-bold text-[#3d5548]">{day}</span>
+                </div>
+              ) : (
+                <span>{day}</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </motion.div>
+  )
+}
+
 export default function DiaryPage() {
   const [limit, setLimit] = useState(PAGE)
   const { data: diaries } = useDiaries(limit)
@@ -177,6 +266,7 @@ export default function DiaryPage() {
   return (
     <div>
       <PageHead title="일기" right={<AddButton onClick={() => setWriting(true)} />} />
+      <DiaryCalendar onPick={(d) => setDetail(d)} />
       {!grouped.length && <EmptyState>첫 일기를 남겨보세요</EmptyState>}
       {grouped.map(([date, items]) => (
         <div key={date}>

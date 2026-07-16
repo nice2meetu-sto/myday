@@ -21,6 +21,7 @@ const QUADS: { key: Quadrant; label: string; hi?: boolean }[] = [
 type PickTarget =
   | { type: 'quad'; quad: Quadrant }
   | { type: 'cell'; date: string }
+  | { type: 'nodate' }
 
 interface PickState {
   todo: Todo
@@ -126,6 +127,19 @@ export default function TodoPage() {
   }
 
   const placeTodo = async (t: Todo, target: PickTarget) => {
+    if (target.type === 'nodate') {
+      const prev = t.due_date
+      await sb().from('todos').update({ due_date: null }).eq('id', t.id)
+      toast('기간 미정으로 옮겼어요', {
+        label: '되돌리기',
+        fn: async () => {
+          await sb().from('todos').update({ due_date: prev }).eq('id', t.id)
+          refresh()
+        },
+      })
+      refresh()
+      return
+    }
     if (target.type === 'quad') {
       await sb().from('todos').update({ quadrant: target.quad, sort_order: Date.now() % 1000000 }).eq('id', t.id)
       toast(`'${QUADS.find((q) => q.key === target.quad)?.label}'로 옮겼어요`)
@@ -157,6 +171,8 @@ export default function TodoPage() {
     if (q) return { type: 'quad', quad: q.dataset.quad as Quadrant }
     const c = el.closest('[data-caldate]') as HTMLElement | null
     if (c) return { type: 'cell', date: c.dataset.caldate! }
+    const nd = el.closest('[data-nodate]')
+    if (nd) return { type: 'nodate' }
     return null
   }
 
@@ -198,7 +214,9 @@ export default function TodoPage() {
               hover: target
                 ? target.type === 'quad'
                   ? `q:${target.quad}`
-                  : `c:${target.date}`
+                  : target.type === 'cell'
+                    ? `c:${target.date}`
+                    : 'nd'
                 : null,
             }
           : p,
@@ -405,18 +423,19 @@ export default function TodoPage() {
 
   const calView = (
     <>
-      {(noDateTodos?.length ?? 0) > 0 && (
-        <>
-          <h3 className="text-[13px] font-extrabold mx-0.5 mt-1 mb-2">기간 미정</h3>
-          <Card className="!p-3 mb-3">
-            <div className="flex gap-[7px] flex-wrap">
-              {(noDateTodos ?? []).map((t) => (
-                <TodoCard key={t.id} t={t} chip />
-              ))}
-            </div>
-          </Card>
-        </>
-      )}
+      <div data-nodate>
+        <Card
+          className={`!p-3 mb-3 mt-1 min-h-[54px] transition-colors ${
+            pick?.hover === 'nd' ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
+          }`}
+        >
+          <div className="flex gap-[7px] flex-wrap min-h-[30px] items-center">
+            {(noDateTodos ?? []).map((t) => (
+              <TodoCard key={t.id} t={t} chip />
+            ))}
+          </div>
+        </Card>
+      </div>
       <motion.div {...popIn} className="bg-white rounded-card p-4 shadow-card">
         <PeriodNav
           label={format(anchor, 'yyyy년 M월')}
@@ -486,7 +505,7 @@ export default function TodoPage() {
               key={d}
               data-caldate={d}
               data-weekcard={d}
-              className={`flex-none w-[76%] max-w-[300px] snap-center bg-white rounded-card p-3.5 min-h-[120px] transition-colors ${
+              className={`flex-none w-[53%] max-w-[220px] snap-center bg-white rounded-card p-3.5 min-h-[120px] transition-colors ${
                 isHover ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
               }`}
               onClick={(e) => {

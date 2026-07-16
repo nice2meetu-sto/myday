@@ -14,6 +14,34 @@ import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, Diary, MoneyEntry, Todo } from '../types'
 
+// ---------------- 인사말 (고정 이름 + 매일 바뀌는 랜덤 문구) ----------------
+const GREETINGS = [
+  '오늘도 행복한 하루 되세요☺️',
+  '행운 가득한 하루 되세요🍀',
+  '즐거운 일만 가득하길!💃🕺',
+  '오늘도 화이팅!💪',
+  '오늘은 라떼 마시기☕️',
+  '행운을 빌어요🍀🍀🍀',
+  '기쁜일만 있을거에요!🌈',
+]
+
+function Greeting() {
+  // 날짜 기반 시드 — 하루 동안 같은 문구, 매일 바뀜
+  const today = todayStr()
+  let h = 0
+  for (let i = 0; i < today.length; i++) h = (h * 31 + today.charCodeAt(i)) % 99991
+  const phrase = GREETINGS[h % GREETINGS.length]
+  return (
+    <div className="pt-2 pb-3 px-0.5">
+      <h1 className="text-[24px] font-extrabold tracking-tight leading-[1.35] m-0">
+        수민님,
+        <br />
+        {phrase}
+      </h1>
+    </div>
+  )
+}
+
 // ---------------- 날씨 (서울 고정, Open-Meteo) ----------------
 const WEATHER_MAP: [number[], string, string][] = [
   [[0], '☀️', '맑음'],
@@ -154,7 +182,7 @@ function DayExpenseCard({ date, onOpen }: { date: string; onOpen: () => void }) 
   const total = (rows ?? []).reduce((s, r) => s + Number(r.amount), 0)
   const isToday = date === todayStr()
   return (
-    <Card onClick={onOpen}>
+    <Card onClick={onOpen} className="min-h-[170px]">
       <Label>{isToday ? '오늘' : fmtDot(date)} 소비</Label>
       <div className="text-[24px] font-bold tracking-tighter tabular mt-0.5">{fmt(total)}</div>
       <div className="mt-2.5">
@@ -164,8 +192,10 @@ function DayExpenseCard({ date, onOpen }: { date: string; onOpen: () => void }) 
             className="flex justify-between text-[12px] py-[5px] border-b border-line last:border-0"
           >
             <span className="truncate mr-1">
-              {catIcon(cats, r.major_category_id) && (
-                <span className="mr-1">{catIcon(cats, r.major_category_id)}</span>
+              {(catIcon(cats, r.major_category_id) || catIcon(cats, r.minor_category_id)) && (
+                <span className="mr-1">
+                  {catIcon(cats, r.major_category_id) || catIcon(cats, r.minor_category_id)}
+                </span>
               )}
               {r.memo || catName(cats, r.major_category_id) || '소비'}
             </span>
@@ -206,7 +236,7 @@ function DayTodoCard({ date }: { date: string }) {
   const list = (todos ?? []).slice(0, 3)
   const allDone = (todos ?? []).length > 0 && (todos ?? []).every((t) => t.is_done)
   return (
-    <Card className="!p-3.5">
+    <Card className="!p-3.5 min-h-[170px]">
       <Label className="mb-2">
         {isToday ? '오늘 할일' : `${fmtDot(date)} 할일`}
         {allDone && isToday && <span className="ml-1 text-[#9AA05E]">· 다 했어요 🎉</span>}
@@ -261,7 +291,7 @@ function ReadingCard() {
 
   if (!book)
     return (
-      <Card>
+      <Card className="min-h-[160px]">
         <Label>읽는 중</Label>
         <EmptyState>읽는 중인 책이 없어요</EmptyState>
       </Card>
@@ -301,6 +331,7 @@ function ReadingCard() {
   return (
     <>
       <Card
+        className="min-h-[160px]"
         onClick={() => {
           setPageInput(String(book.current_page))
           setOpen(true)
@@ -395,7 +426,7 @@ function MemoCard() {
   }
 
   return (
-    <Card className="!p-3.5">
+    <Card className="!p-3.5 min-h-[160px]">
       <Label>메모</Label>
       <textarea
         className="w-full border-0 outline-none resize-none text-[13px] text-[#555] leading-relaxed mt-1.5 min-h-[80px] bg-transparent"
@@ -461,6 +492,7 @@ export default function HomePage() {
   const [expenseOpen, setExpenseOpen] = useState(false)
   return (
     <div>
+      <Greeting />
       <Weather />
       <RandomQuote />
       <PendingRecurring />

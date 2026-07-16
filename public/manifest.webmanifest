@@ -5,8 +5,8 @@
   "start_url": "/myday/#/",
   "scope": "/myday/",
   "display": "standalone",
-  "background_color": "#DBD7B2",
-  "theme_color": "#DBD7B2",
+  "background_color": "#EDEBD8",
+  "theme_color": "#EDEBD8",
   "icons": [
     {
       "src": "icon-192.png",
