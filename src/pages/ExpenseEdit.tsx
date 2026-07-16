@@ -83,7 +83,7 @@ function DataEdit() {
             <span
               key={m.id}
               className={`rounded-[10px] px-[11px] py-[7px] text-[11px] font-semibold cursor-pointer ${
-                catFilter.has(m.id) ? 'bg-ink text-white' : 'bg-[#F2F2EF]'
+                catFilter.has(m.id) ? 'bg-acc text-white' : 'bg-[#F2F2EF]'
               }`}
               onClick={() => {
                 const next = new Set(catFilter)
@@ -268,7 +268,7 @@ function CategoryEdit() {
         ).map(([v, l]) => (
           <span
             key={v}
-            className={`rounded-[10px] px-3 py-2 text-[11px] font-bold cursor-pointer ${tab === v ? 'bg-ink text-white' : 'bg-white shadow-card'}`}
+            className={`rounded-[10px] px-3 py-2 text-[11px] font-bold cursor-pointer ${tab === v ? 'bg-acc text-white' : 'bg-white shadow-card'}`}
             onClick={() => setTab(v)}
           >
             {l}
@@ -533,7 +533,7 @@ function RecurringEdit() {
           </div>
           <input
             type="checkbox"
-            className="w-5 h-5 accent-ink"
+            className="w-5 h-5 accent-acc"
             checked={r.is_active}
             onChange={() => toggleActive(r)}
           />
@@ -634,7 +634,7 @@ function RecurringEdit() {
                 {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
                   <span
                     key={i}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold cursor-pointer ${weekday === i ? 'bg-ink text-white' : 'bg-[#F2F2EF]'}`}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold cursor-pointer ${weekday === i ? 'bg-acc text-white' : 'bg-[#F2F2EF]'}`}
                     onClick={() => setWeekday(i)}
                   >
                     {d}
@@ -664,7 +664,7 @@ function RecurringEdit() {
                 />
                 <span>일</span>
                 <span
-                  className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold cursor-pointer ${lastDay ? 'bg-ink text-white' : 'bg-[#F2F2EF]'}`}
+                  className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold cursor-pointer ${lastDay ? 'bg-acc text-white' : 'bg-[#F2F2EF]'}`}
                   onClick={() => setLastDay(!lastDay)}
                 >
                   말일
@@ -690,7 +690,7 @@ function RecurringEdit() {
           </span>
           <input
             type="checkbox"
-            className="w-5 h-5 accent-ink"
+            className="w-5 h-5 accent-acc"
             checked={autoCreate}
             onChange={(e) => setAutoCreate(e.target.checked)}
           />

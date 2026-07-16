@@ -243,7 +243,7 @@ function ShelfView() {
                 {pct}% · {b.current_page}쪽
               </small>
               <div className="h-1 bg-line rounded mt-1 overflow-hidden">
-                <i className="block h-full bg-ink rounded" style={{ width: `${pct}%` }} />
+                <i className="block h-full bg-acc rounded" style={{ width: `${pct}%` }} />
               </div>
             </div>
           )
@@ -571,7 +571,7 @@ function QuotesView() {
     <div>
       <div className="flex gap-1.5 overflow-x-auto pb-3 mt-1 no-scrollbar">
         <span
-          className={`flex-none rounded-[10px] px-3 py-2 text-[11px] font-bold cursor-pointer ${!filter ? 'bg-ink text-white' : 'bg-white shadow-card'}`}
+          className={`flex-none rounded-[10px] px-3 py-2 text-[11px] font-bold cursor-pointer ${!filter ? 'bg-acc text-white' : 'bg-white shadow-card'}`}
           onClick={() => setFilter(null)}
         >
           전체
@@ -579,7 +579,7 @@ function QuotesView() {
         {(filter ? (books ?? []) : booksWithQuotes).map((b) => (
           <span
             key={b.id}
-            className={`flex-none rounded-[10px] px-3 py-2 text-[11px] font-bold cursor-pointer ${filter === b.id ? 'bg-ink text-white' : 'bg-white shadow-card'}`}
+            className={`flex-none rounded-[10px] px-3 py-2 text-[11px] font-bold cursor-pointer ${filter === b.id ? 'bg-acc text-white' : 'bg-white shadow-card'}`}
             onClick={() => setFilter(filter === b.id ? null : b.id)}
           >
             {b.title}

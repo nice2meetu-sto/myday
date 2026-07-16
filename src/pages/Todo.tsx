@@ -465,7 +465,7 @@ export default function TodoPage() {
                 key={d}
                 data-caldate={dateStr}
                 className={`cal-cell aspect-square flex flex-col items-center justify-center gap-[3px] rounded-[11px] cursor-pointer text-[12px] font-semibold transition-transform ${
-                  isToday ? 'cal-today bg-ink text-white' : isSel ? 'bg-pale' : ''
+                  isToday ? 'cal-today bg-acc text-white' : isSel ? 'bg-pale' : ''
                 } ${isHover ? '!bg-pale scale-[1.12] outline outline-[1.5px] outline-paled' : ''}`}
                 onClick={(e) => {
                   if (onTargetTap({ type: 'cell', date: dateStr })) {
@@ -516,7 +516,7 @@ export default function TodoPage() {
               <div className="flex items-baseline justify-between mb-2">
                 <b className="text-[12px] font-extrabold">{fmtDateKo(d)}</b>
                 {isToday && (
-                  <span className="text-[9px] font-bold bg-ink text-white rounded-md px-1.5 py-0.5">
+                  <span className="text-[9px] font-bold bg-acc text-white rounded-md px-1.5 py-0.5">
                     오늘
                   </span>
                 )}
@@ -721,7 +721,7 @@ function TodoSheet({
       {!edit && (
         <label className="flex items-center justify-between text-[12px] font-bold py-1 mb-2">
           <span>반복</span>
-          <input type="checkbox" className="w-5 h-5 accent-ink" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
+          <input type="checkbox" className="w-5 h-5 accent-acc" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
         </label>
       )}
       {repeat && (
@@ -742,7 +742,7 @@ function TodoSheet({
                 <span
                   key={i}
                   className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold cursor-pointer ${
-                    weekdays.includes(i) ? 'bg-ink text-white' : 'bg-[#F2F2EF]'
+                    weekdays.includes(i) ? 'bg-acc text-white' : 'bg-[#F2F2EF]'
                   }`}
                   onClick={() =>
                     setWeekdays((w) => (w.includes(i) ? w.filter((x) => x !== i) : [...w, i]))
@@ -904,7 +904,7 @@ function TemplateListSheet({
               {t.due_time ? ` · ${fmtTimeHM(t.due_time)}` : ''}
             </div>
           </div>
-          <input type="checkbox" className="w-5 h-5 accent-ink" checked={t.is_active} onChange={() => toggle(t)} />
+          <input type="checkbox" className="w-5 h-5 accent-acc" checked={t.is_active} onChange={() => toggle(t)} />
         </div>
       ))}
     </BottomSheet>
@@ -999,7 +999,7 @@ function TemplateEditSheet({
               <span
                 key={i}
                 className={`w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold cursor-pointer ${
-                  weekdays.includes(i) ? 'bg-ink text-white' : 'bg-[#F2F2EF]'
+                  weekdays.includes(i) ? 'bg-acc text-white' : 'bg-[#F2F2EF]'
                 }`}
                 onClick={() => setWeekdays((w) => (w.includes(i) ? w.filter((x) => x !== i) : [...w, i]))}
               >

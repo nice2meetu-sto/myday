@@ -113,7 +113,7 @@ export function AddButton({
   return (
     <button
       className={`w-[34px] h-[34px] rounded-[11px] border-0 text-[18px] leading-none shadow-card ${
-        light ? 'bg-white text-ink text-[14px]' : 'bg-ink text-white'
+        light ? 'bg-white text-ink text-[14px]' : 'bg-acc text-white'
       }`}
       onClick={onClick}
     >
@@ -200,7 +200,7 @@ export function ChipRow<T extends string | null>({
         <span
           key={i}
           className={`rounded-[10px] px-[11px] py-[7px] text-[11px] font-semibold cursor-pointer transition-colors ${
-            value === o.value ? 'bg-ink text-white' : 'bg-[#F2F2EF]'
+            value === o.value ? 'bg-acc text-white' : 'bg-[#F2F2EF]'
           }`}
           onClick={() => onChange(allowNull && value === o.value ? (null as T) : o.value)}
         >
@@ -223,7 +223,7 @@ export function SaveButton({
   return (
     <button
       className={`w-full border-0 rounded-[14px] py-[13px] font-bold text-[13px] mt-1 ${
-        disabled ? 'bg-[#DDDDD8] text-white' : 'bg-ink text-white'
+        disabled ? 'bg-[#DDDDD8] text-white' : 'bg-acc text-white'
       }`}
       onClick={onClick}
       disabled={disabled}

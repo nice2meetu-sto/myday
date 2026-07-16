@@ -282,7 +282,7 @@ export function MoneySheet({
             <span>반복으로 등록</span>
             <input
               type="checkbox"
-              className="w-5 h-5 accent-ink"
+              className="w-5 h-5 accent-acc"
               checked={recur}
               onChange={(e) => setRecur(e.target.checked)}
             />
@@ -313,7 +313,7 @@ export function MoneySheet({
                       <span
                         key={i}
                         className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold cursor-pointer ${
-                          weekday === i ? 'bg-ink text-white' : 'bg-[#F2F2EF]'
+                          weekday === i ? 'bg-acc text-white' : 'bg-[#F2F2EF]'
                         }`}
                         onClick={() => setWeekday(i)}
                       >
@@ -345,7 +345,7 @@ export function MoneySheet({
                     <span>일</span>
                     <span
                       className={`rounded-lg px-2.5 py-1.5 text-[11px] font-bold cursor-pointer ${
-                        lastDay ? 'bg-ink text-white' : 'bg-[#F2F2EF]'
+                        lastDay ? 'bg-acc text-white' : 'bg-[#F2F2EF]'
                       }`}
                       onClick={() => setLastDay(!lastDay)}
                     >

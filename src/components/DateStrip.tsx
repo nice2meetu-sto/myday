@@ -42,7 +42,7 @@ export function DateStrip({
             key={key}
             data-today={key === today ? '1' : undefined}
             className={`flex-none w-11 py-[9px] rounded-[15px] text-center shadow-card cursor-pointer transition-colors ${
-              on ? 'bg-ink text-white' : 'bg-white'
+              on ? 'bg-acc text-white' : 'bg-white'
             }`}
             onClick={() => onSelect(key)}
           >

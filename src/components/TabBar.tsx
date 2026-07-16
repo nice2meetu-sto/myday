@@ -20,7 +20,7 @@ export function TabBar() {
           <button
             key={t.path}
             className={`flex-1 border-0 py-[9px] rounded-[22px] text-[11px] font-bold transition-all ${
-              isActive(t.path) ? 'bg-ink text-white' : 'bg-transparent text-sub'
+              isActive(t.path) ? 'bg-acc text-white' : 'bg-transparent text-sub'
             }`}
             onClick={() => nav(t.path)}
           >

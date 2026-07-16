@@ -349,7 +349,7 @@ function ReadingCard() {
           </div>
         </div>
         <div className="h-[5px] bg-line rounded-lg overflow-hidden mt-2.5">
-          <i className="block h-full bg-ink rounded-lg" style={{ width: `${pct}%` }} />
+          <i className="block h-full bg-acc rounded-lg" style={{ width: `${pct}%` }} />
         </div>
       </Card>
       <BottomSheet open={open} onClose={() => setOpen(false)} title={book.title}>

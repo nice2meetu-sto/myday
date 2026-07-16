@@ -4,12 +4,13 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#EDEBD8',
+        bg: '#EBE3D3',
         card: '#FFFFFF',
         ink: '#111111',
         sub: '#8E8E93',
         line: '#EDEDEA',
         warn: '#B44B28',
+        acc: '#82856A',
         exp: '#C7976F',
         inc: '#C7CE9A',
         hl: '#FFDE70',

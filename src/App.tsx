@@ -35,7 +35,7 @@ function DbSetupNeeded({ detail }: { detail: string }) {
         </ol>
         <p className="text-[11px] text-sub leading-relaxed break-all">오류 상세: {detail}</p>
         <button
-          className="w-full border-0 bg-ink text-white rounded-[14px] py-[13px] font-bold text-[13px] mt-3"
+          className="w-full border-0 bg-acc text-white rounded-[14px] py-[13px] font-bold text-[13px] mt-3"
           onClick={() => location.reload()}
         >
           완료했어요 · 다시 확인

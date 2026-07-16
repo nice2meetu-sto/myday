@@ -149,7 +149,7 @@ export default function BookDetailPage() {
           </div>
           <div className="flex gap-1.5 mt-3 flex-wrap">
             <button
-              className="border-0 bg-ink text-white rounded-xl px-4 py-2 text-[11px] font-bold"
+              className="border-0 bg-acc text-white rounded-xl px-4 py-2 text-[11px] font-bold"
               onClick={changeStatus}
             >
               {statusLabel}
@@ -188,7 +188,7 @@ export default function BookDetailPage() {
               min={0}
               max={total}
               value={page}
-              className="w-full accent-ink mt-3"
+              className="w-full accent-acc mt-3"
               onChange={(e) => setPage(parseInt(e.target.value, 10))}
               onPointerUp={() => commitPage(page)}
               onKeyUp={(e) => e.key !== 'Tab' && commitPage(page)}
@@ -201,7 +201,7 @@ export default function BookDetailPage() {
                 value={page || ''}
                 onChange={(e) => setPage(parseInt(e.target.value.replace(/[^0-9]/g, ''), 10) || 0)}
               />
-              <button className="border-0 bg-ink text-white rounded-xl px-4 text-[12px] font-bold" onClick={() => commitPage(page)}>
+              <button className="border-0 bg-acc text-white rounded-xl px-4 text-[12px] font-bold" onClick={() => commitPage(page)}>
                 저장
               </button>
             </div>
@@ -227,7 +227,7 @@ export default function BookDetailPage() {
             onChange={(e) => setQuotePage(e.target.value.replace(/[^0-9]/g, ''))}
           />
           <button
-            className={`flex-1 border-0 rounded-xl text-[12px] font-bold ${quoteText.trim() ? 'bg-ink text-white' : 'bg-[#DDDDD8] text-white'}`}
+            className={`flex-1 border-0 rounded-xl text-[12px] font-bold ${quoteText.trim() ? 'bg-acc text-white' : 'bg-[#DDDDD8] text-white'}`}
             onClick={saveQuote}
             disabled={!quoteText.trim()}
           >
