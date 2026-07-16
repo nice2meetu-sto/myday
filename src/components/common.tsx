@@ -1,5 +1,13 @@
 import { ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import { fmt } from '../lib/format'
+
+/** 카드 공용 등장 애니메이션 — 스프링으로 살짝 부풀며 나타남 */
+export const popIn = {
+  initial: { opacity: 0, scale: 0.94, y: 10 },
+  animate: { opacity: 1, scale: 1, y: 0 },
+  transition: { type: 'spring' as const, stiffness: 320, damping: 24, mass: 0.75 },
+}
 
 export function Card({
   children,
@@ -13,13 +21,16 @@ export function Card({
   style?: React.CSSProperties
 }) {
   return (
-    <div
-      className={`bg-card rounded-card p-[18px] shadow-card ${onClick ? 'cursor-pointer active:scale-[.99] transition-transform' : ''} ${className}`}
+    <motion.div
+      {...popIn}
+      whileTap={{ scale: 0.98 }}
+      whileHover={onClick ? { scale: 1.01 } : undefined}
+      className={`bg-card rounded-card p-[18px] shadow-card ${onClick ? 'cursor-pointer' : ''} ${className}`}
       onClick={onClick}
       style={style}
     >
       {children}
-    </div>
+    </motion.div>
   )
 }
 

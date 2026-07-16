@@ -23,7 +23,17 @@ export function DateStrip({
   }, [])
 
   return (
-    <div ref={ref} className="flex gap-[7px] overflow-x-auto pb-3.5 pt-0.5 no-scrollbar">
+    <div
+      ref={ref}
+      className="flex gap-[7px] overflow-x-auto pb-3.5 pt-0.5 no-scrollbar"
+      style={{
+        // 컨테이너 폭 제한을 깨고 화면 전체 폭으로
+        marginLeft: 'calc(50% - 50vw)',
+        marginRight: 'calc(50% - 50vw)',
+        paddingLeft: 16,
+        paddingRight: 16,
+      }}
+    >
       {days.map((d) => {
         const key = ymd(d)
         const on = key === selected

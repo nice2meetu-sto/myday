@@ -77,6 +77,7 @@ function RandomQuote() {
       {book && (
         <cite className="block mt-1.5 not-italic text-[10px] font-semibold text-[#9a8b70]">
           — {book.title}
+          {book.author ? ` · ${book.author}` : ''}
         </cite>
       )}
     </div>
@@ -463,6 +464,9 @@ export default function HomePage() {
       <Weather />
       <RandomQuote />
       <PendingRecurring />
+      <div className="mb-3">
+        <DayDiaryCard date={selDate} />
+      </div>
       <DateStrip selected={selDate} onSelect={setSelDate} />
       <div className="grid grid-cols-2 gap-3 mb-3">
         <DayExpenseCard date={selDate} onOpen={() => setExpenseOpen(true)} />
@@ -472,7 +476,6 @@ export default function HomePage() {
         <ReadingCard />
         <MemoCard />
       </div>
-      <DayDiaryCard date={selDate} />
       <MoneySheet open={expenseOpen} onClose={() => setExpenseOpen(false)} />
     </div>
   )

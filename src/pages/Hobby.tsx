@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { addMonths, endOfMonth, format, startOfMonth } from 'date-fns'
-import { Card, Label, SegmentedControl, AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, ChipRow, PeriodNav } from '../components/common'
+import { motion } from 'framer-motion'
+import { Card, Label, SegmentedControl, AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, ChipRow, PeriodNav, popIn } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { BookCover, coverFallbackColor } from '../components/CoverImg'
 import { useBooks, useQuotes } from '../lib/books'
@@ -423,32 +424,37 @@ function StatsView() {
             const d = i + 1
             const dateStr = ymd(new Date(anchor.getFullYear(), anchor.getMonth(), d))
             const dayLogs = byDay.get(dateStr) ?? []
-            const bookIds = [...new Set(dayLogs.map((l) => l.book_id))].slice(0, 2)
+            const bookIds = [...new Set(dayLogs.map((l) => l.book_id))]
+            const firstBook = bookIds.length ? bookMap.get(bookIds[0]) : undefined
             return (
               <div
                 key={d}
-                className={`aspect-square flex flex-col items-center justify-center gap-[3px] rounded-[11px] cursor-pointer text-[11px] font-semibold ${
-                  selDay === dateStr ? 'bg-cream' : ''
-                }`}
+                className={`aspect-square relative rounded-[9px] cursor-pointer text-[11px] font-semibold overflow-hidden flex items-center justify-center ${
+                  selDay === dateStr ? 'ring-2 ring-[#C9A86A]' : ''
+                } ${!firstBook && selDay === dateStr ? 'bg-cream' : ''}`}
                 onClick={() => setSelDay(selDay === dateStr ? null : dateStr)}
               >
-                <span>{d}</span>
-                <div className="flex h-[14px]">
-                  {bookIds.map((id, k) => {
-                    const b = bookMap.get(id)
-                    return (
-                      <span
-                        key={id}
-                        className="block w-[10px] h-[14px] rounded-[2px] overflow-hidden shadow-[0_0_0_1px_#fff]"
-                        style={{ marginLeft: k > 0 ? -3 : 0 }}
-                      >
-                        {b && (
-                          <BookCover title={b.title} coverUrl={b.cover_url} thumb className="w-full h-full" />
-                        )}
+                {firstBook ? (
+                  <>
+                    {/* 읽은 날: 칸 가득 표지 */}
+                    <BookCover
+                      title={firstBook.title}
+                      coverUrl={firstBook.cover_url}
+                      thumb
+                      className="absolute inset-0 w-full h-full"
+                    />
+                    <span className="absolute top-0.5 left-1 text-[9px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">
+                      {d}
+                    </span>
+                    {bookIds.length > 1 && (
+                      <span className="absolute bottom-0.5 right-1 text-[8px] font-bold text-white bg-black/45 rounded px-1">
+                        +{bookIds.length - 1}
                       </span>
-                    )
-                  })}
-                </div>
+                    )}
+                  </>
+                ) : (
+                  <span>{d}</span>
+                )}
               </div>
             )
           })}
@@ -582,7 +588,8 @@ function QuotesView() {
       </div>
       {!visible.length && <EmptyState>아직 기록한 문장이 없어요</EmptyState>}
       {visible.map((q) => (
-        <div
+        <motion.div
+          {...popIn}
           key={q.id}
           className="bg-cream rounded-card p-[18px] mb-3 shadow-card select-none"
           onPointerDown={(e) => onLongPress(q, e)}
@@ -598,7 +605,7 @@ function QuotesView() {
               {new Date(q.created_at).getMonth() + 1}월 {new Date(q.created_at).getDate()}일
             </span>
           </div>
-        </div>
+        </motion.div>
       ))}
       {(quotes ?? []).length > limit && (
         <button

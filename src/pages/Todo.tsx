@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { addMonths, endOfMonth, format, startOfMonth } from 'date-fns'
-import { Card, SegmentedControl, AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, ChipRow, PeriodNav } from '../components/common'
+import { addDays, addMonths, endOfMonth, format, startOfMonth, startOfWeek } from 'date-fns'
+import { motion } from 'framer-motion'
+import { Card, SegmentedControl, AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, ChipRow, PeriodNav, popIn } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { ensureRecurrences } from '../lib/recurrence'
@@ -322,7 +323,8 @@ export default function TodoPage() {
           const undone = items.filter((t) => !t.is_done).length
           const isHover = pick?.hover === `q:${q.key}`
           return (
-            <div
+            <motion.div
+              {...popIn}
               key={q.key}
               data-quad={q.key}
               className={`quad bg-white rounded-[18px] p-2.5 min-h-[176px] shadow-card transition-colors ${
@@ -346,7 +348,7 @@ export default function TodoPage() {
                   <TodoCard t={t} />
                 </div>
               ))}
-            </div>
+            </motion.div>
           )
         })}
       </div>
@@ -367,11 +369,55 @@ export default function TodoPage() {
     return map
   }, [monthTodos])
 
-  const dayList = byDate.get(selDate) ?? []
+  // 주간 슬라이더: selDate가 속한 주 (일요일 시작)
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(new Date(selDate + 'T00:00:00'), { weekStartsOn: 0 })
+    return Array.from({ length: 7 }, (_, i) => ymd(addDays(start, i)))
+  }, [selDate])
+  const weekRef = useRef<HTMLDivElement>(null)
+
+  const { data: weekTodos } = useQuery({
+    queryKey: ['todos', 'weekof', weekDays[0]],
+    queryFn: async () => {
+      const { data, error } = await sb()
+        .from('todos')
+        .select('*')
+        .eq('is_skipped', false)
+        .gte('due_date', weekDays[0])
+        .lte('due_date', weekDays[6])
+        .order('is_done')
+        .order('due_time', { nullsFirst: false })
+      if (error) throw error
+      return data as Todo[]
+    },
+  })
+
+  useEffect(() => {
+    if (view !== 'cal') return
+    const el = weekRef.current?.querySelector(`[data-weekcard="${selDate}"]`) as HTMLElement | null
+    if (el && weekRef.current) {
+      weekRef.current.scrollTo({
+        left: el.offsetLeft - weekRef.current.clientWidth / 2 + el.clientWidth / 2,
+        behavior: 'smooth',
+      })
+    }
+  }, [selDate, view, weekDays])
 
   const calView = (
     <>
-      <div className="bg-white rounded-card p-4 shadow-card">
+      {(noDateTodos?.length ?? 0) > 0 && (
+        <>
+          <h3 className="text-[13px] font-extrabold mx-0.5 mt-1 mb-2">기간 미정</h3>
+          <Card className="!p-3 mb-3">
+            <div className="flex gap-[7px] flex-wrap">
+              {(noDateTodos ?? []).map((t) => (
+                <TodoCard key={t.id} t={t} chip />
+              ))}
+            </div>
+          </Card>
+        </>
+      )}
+      <motion.div {...popIn} className="bg-white rounded-card p-4 shadow-card">
         <PeriodNav
           label={format(anchor, 'yyyy년 M월')}
           onPrev={() => setAnchor(addMonths(anchor, -1))}
@@ -424,26 +470,50 @@ export default function TodoPage() {
             )
           })}
         </div>
-      </div>
-      {(noDateTodos?.length ?? 0) > 0 && (
-        <>
-          <h3 className="text-[13px] font-extrabold mx-0.5 mt-4 mb-2">기간 미정</h3>
-          <Card className="!p-3">
-            <div className="flex gap-[7px] flex-wrap">
-              {(noDateTodos ?? []).map((t) => (
-                <TodoCard key={t.id} t={t} chip />
+      </motion.div>
+      <h3 className="text-[13px] font-extrabold mx-0.5 mt-4 mb-2">이번주 할일</h3>
+      <div
+        ref={weekRef}
+        className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2 -mx-4 px-4"
+      >
+        {weekDays.map((d) => {
+          const items = (weekTodos ?? []).filter((t) => t.due_date === d)
+          const isToday = d === today
+          const isHover = pick?.hover === `c:${d}`
+          return (
+            <motion.div
+              {...popIn}
+              key={d}
+              data-caldate={d}
+              data-weekcard={d}
+              className={`flex-none w-[76%] max-w-[300px] snap-center bg-white rounded-card p-3.5 min-h-[120px] transition-colors ${
+                isHover ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
+              }`}
+              onClick={(e) => {
+                if ((e.target as HTMLElement).closest('[data-tcard]')) return
+                onTargetTap({ type: 'cell', date: d })
+              }}
+            >
+              <div className="flex items-baseline justify-between mb-2">
+                <b className="text-[12px] font-extrabold">{fmtDateKo(d)}</b>
+                {isToday && (
+                  <span className="text-[9px] font-bold bg-ink text-white rounded-md px-1.5 py-0.5">
+                    오늘
+                  </span>
+                )}
+              </div>
+              {!items.length && (
+                <div className="text-[11px] text-sub py-2 text-center">할일이 없어요</div>
+              )}
+              {items.map((t) => (
+                <div key={t.id} data-tcard>
+                  <TodoCard t={t} timeRight />
+                </div>
               ))}
-            </div>
-          </Card>
-        </>
-      )}
-      <h3 className="text-[13px] font-extrabold mx-0.5 mt-4 mb-2">{fmtDateKo(selDate)}</h3>
-      <Card className="!p-3">
-        {!dayList.length && <EmptyState>이 날은 할일이 없어요</EmptyState>}
-        {dayList.map((t) => (
-          <TodoCard key={t.id} t={t} timeRight />
-        ))}
-      </Card>
+            </motion.div>
+          )
+        })}
+      </div>
     </>
   )
 

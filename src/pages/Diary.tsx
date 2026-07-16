@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AddButton, PageHead, EmptyState, Field, inputCls, SaveButton } from '../components/common'
+import { motion } from 'framer-motion'
+import { AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, popIn } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { DiaryPhoto } from '../components/CoverImg'
 import { uploadImage, deleteImage } from '../lib/image'
@@ -183,7 +184,9 @@ export default function DiaryPage() {
             {fmtDateKo(date)}
           </div>
           {items.map((d) => (
-            <div
+            <motion.div
+              {...popIn}
+              whileTap={{ scale: 0.98 }}
               key={d.id}
               className="bg-white rounded-card mb-3 shadow-card cursor-pointer p-4 flex gap-3 items-center"
               onClick={() => setDetail(d)}
@@ -207,7 +210,7 @@ export default function DiaryPage() {
                   <p className="mt-1 mb-0 text-[12px] text-sub">(사진 일기)</p>
                 )}
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       ))}
