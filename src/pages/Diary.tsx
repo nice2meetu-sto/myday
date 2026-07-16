@@ -149,8 +149,9 @@ function DiarySheet({
 }
 
 // ---------------- 월별 사진 달력 ----------------
-function DiaryCalendar({ onPick }: { onPick: (d: Diary) => void }) {
+function DiaryCalendar({ onOpen }: { onOpen: (d: Diary) => void }) {
   const [anchor, setAnchor] = useState(() => new Date())
+  const [selDay, setSelDay] = useState<string | null>(null)
   const from = ymd(startOfMonth(anchor))
   const to = ymd(endOfMonth(anchor))
   const { data: monthDiaries } = useQuery({
@@ -183,8 +184,14 @@ function DiaryCalendar({ onPick }: { onPick: (d: Diary) => void }) {
     <motion.div {...popIn} className="bg-white rounded-card p-4 mb-3">
       <PeriodNav
         label={format(anchor, 'yyyy년 M월')}
-        onPrev={() => setAnchor(addMonths(anchor, -1))}
-        onNext={() => setAnchor(addMonths(anchor, 1))}
+        onPrev={() => {
+          setAnchor(addMonths(anchor, -1))
+          setSelDay(null)
+        }}
+        onNext={() => {
+          setAnchor(addMonths(anchor, 1))
+          setSelDay(null)
+        }}
       />
       <div className="grid grid-cols-7 gap-0.5 mb-1.5">
         {DAY_NAMES.map((d) => (
@@ -205,8 +212,10 @@ function DiaryCalendar({ onPick }: { onPick: (d: Diary) => void }) {
           return (
             <div
               key={day}
-              className="aspect-square relative rounded-[9px] overflow-hidden cursor-pointer flex items-center justify-center text-[11px] font-semibold"
-              onClick={() => entries.length && onPick(entries[0])}
+              className={`aspect-square relative rounded-[9px] overflow-hidden cursor-pointer flex items-center justify-center text-[11px] font-semibold ${
+                selDay === dateStr ? 'ring-2 ring-acc' : ''
+              }`}
+              onClick={() => setSelDay(selDay === dateStr ? null : dateStr)}
             >
               {withPhoto ? (
                 <>
@@ -232,6 +241,38 @@ function DiaryCalendar({ onPick }: { onPick: (d: Diary) => void }) {
           )
         })}
       </div>
+      {/* 선택한 날짜의 일기 — 달력 아래에 표시 */}
+      {selDay && (
+        <div className="mt-3 pt-3 border-t border-line">
+          <div className="text-[11px] font-extrabold text-sub mb-2">{fmtDateKo(selDay)}</div>
+          {!(byDate.get(selDay)?.length ?? 0) && (
+            <div className="text-[12px] text-sub py-2">이 날은 기록이 없어요</div>
+          )}
+          {(byDate.get(selDay) ?? []).map((d) => (
+            <div
+              key={d.id}
+              className="bg-[#FAFAF8] rounded-2xl mb-2 cursor-pointer p-3 flex gap-3 items-center"
+              onClick={() => onOpen(d)}
+            >
+              {d.photo_url && (
+                <DiaryPhoto path={d.photo_url} thumb className="w-12 h-12 rounded-xl flex-none" />
+              )}
+              <div className="min-w-0 flex-1">
+                {d.entry_time && (
+                  <time className="text-[10px] text-sub font-bold">{fmtTimeHM(d.entry_time)}</time>
+                )}
+                {d.content ? (
+                  <p className="mt-0.5 mb-0 text-[13px] leading-[1.55] text-[#333] line-clamp-2">
+                    {d.content}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 mb-0 text-[12px] text-sub">(사진 일기)</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -266,7 +307,7 @@ export default function DiaryPage() {
   return (
     <div>
       <PageHead title="일기" right={<AddButton onClick={() => setWriting(true)} />} />
-      <DiaryCalendar onPick={(d) => setDetail(d)} />
+      <DiaryCalendar onOpen={(d) => setDetail(d)} />
       {!grouped.length && <EmptyState>첫 일기를 남겨보세요</EmptyState>}
       {grouped.map(([date, items]) => (
         <div key={date}>

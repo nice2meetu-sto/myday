@@ -291,7 +291,7 @@ function ReadingCard() {
 
   if (!book)
     return (
-      <Card className="min-h-[160px]">
+      <Card>
         <Label>읽는 중</Label>
         <EmptyState>읽는 중인 책이 없어요</EmptyState>
       </Card>
@@ -331,7 +331,6 @@ function ReadingCard() {
   return (
     <>
       <Card
-        className="min-h-[160px]"
         onClick={() => {
           setPageInput(String(book.current_page))
           setOpen(true)
@@ -426,7 +425,7 @@ function MemoCard() {
   }
 
   return (
-    <Card className="!p-3.5 min-h-[160px]">
+    <Card className="!p-3.5">
       <Label>메모</Label>
       <textarea
         className="w-full border-0 outline-none resize-none text-[13px] text-[#555] leading-relaxed mt-1.5 min-h-[80px] bg-transparent"
@@ -457,7 +456,7 @@ function DayDiaryCard({ date }: { date: string }) {
   })
   const latest = diaries?.[0]
   return (
-    <Card className="flex gap-3 items-center">
+    <Card className="flex gap-3 items-center !p-3">
       {latest?.photo_url && (
         <DiaryPhoto path={latest.photo_url} thumb className="w-14 h-14 rounded-[14px] flex-none" />
       )}

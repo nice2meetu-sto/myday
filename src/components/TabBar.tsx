@@ -15,7 +15,7 @@ export function TabBar() {
     p === '/' ? pathname === '/' : pathname.startsWith(p)
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 px-3 pb-[26px] pt-2 pointer-events-none">
-      <div className="mx-auto max-w-[420px] bg-white rounded-[26px] p-[5px] flex pointer-events-auto">
+      <div className="mx-auto max-w-[420px] bg-white/45 backdrop-blur-xl backdrop-saturate-150 border border-white/50 rounded-[26px] p-[5px] flex pointer-events-auto shadow-[inset_0_1px_0_rgba(255,255,255,.5)]">
         {TABS.map((t) => (
           <button
             key={t.path}

@@ -345,7 +345,7 @@ export default function TodoPage() {
               {...popIn}
               key={q.key}
               data-quad={q.key}
-              className={`quad bg-white rounded-[18px] p-2.5 min-h-[176px] shadow-card transition-colors ${
+              className={`quad bg-white rounded-[18px] p-2.5 min-h-[220px] shadow-card transition-colors ${
                 isHover ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
               }`}
               onClick={(e) => {

@@ -79,9 +79,25 @@ function AddBookSheet({ open, onClose }: { open: boolean; onClose: () => void })
       <Field label="작가">
         <input className={inputCls} value={author} onChange={(e) => setAuthor(e.target.value)} />
       </Field>
-      <Field label="전체 쪽수">
-        <input className={inputCls} inputMode="numeric" value={pages} onChange={(e) => setPages(e.target.value.replace(/[^0-9]/g, ''))} />
-      </Field>
+      <div className="flex gap-3">
+        <div className="w-[38%]">
+          <Field label="전체 쪽수">
+            <input className={inputCls} inputMode="numeric" value={pages} onChange={(e) => setPages(e.target.value.replace(/[^0-9]/g, ''))} />
+          </Field>
+        </div>
+        <div className="flex-1">
+          <Field label="상태">
+            <ChipRow
+              options={[
+                { value: 'want', label: '읽고 싶어요' },
+                { value: 'reading', label: '읽는 중' },
+              ]}
+              value={status}
+              onChange={setStatus}
+            />
+          </Field>
+        </div>
+      </div>
       <Field label="표지 (선택)">
         <SegmentedControl
           className="mb-2"
@@ -135,16 +151,6 @@ function AddBookSheet({ open, onClose }: { open: boolean; onClose: () => void })
             )}
           </>
         )}
-      </Field>
-      <Field label="상태">
-        <ChipRow
-          options={[
-            { value: 'want', label: '읽고 싶어요' },
-            { value: 'reading', label: '읽는 중' },
-          ]}
-          value={status}
-          onChange={setStatus}
-        />
       </Field>
       <SaveButton onClick={save} disabled={busy}>
         {busy ? '저장 중…' : '저장'}
