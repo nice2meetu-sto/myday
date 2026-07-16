@@ -6,7 +6,7 @@ import { Card, SegmentedControl, AddButton, PageHead, EmptyState, Field, inputCl
 import { BottomSheet } from '../components/BottomSheet'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { ensureRecurrences } from '../lib/recurrence'
-import { ymd, todayStr, fmtDateKo, DAY_NAMES, fmtTimeHM } from '../lib/format'
+import { ymd, todayStr, fmtDateKo, DAY_NAMES, fmtTimeHM, fmtSlash, todoCompare } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Quadrant, Todo, TodoTemplate } from '../types'
@@ -113,6 +113,13 @@ export default function TodoPage() {
 
   const refresh = () => invalidate(['todos'])
 
+  // 탭바에서 할일 탭 재탭 → 매트릭스/캘린더 전환
+  useEffect(() => {
+    const onRetap = () => setView((v) => (v === 'mx' ? 'cal' : 'mx'))
+    window.addEventListener('tab-retap:/todo', onRetap)
+    return () => window.removeEventListener('tab-retap:/todo', onRetap)
+  }, [])
+
   // ---------- mutations ----------
   const toggleDone = async (t: Todo) => {
     const done = !t.is_done
@@ -128,32 +135,14 @@ export default function TodoPage() {
 
   const placeTodo = async (t: Todo, target: PickTarget) => {
     if (target.type === 'nodate') {
-      const prev = t.due_date
       await sb().from('todos').update({ due_date: null }).eq('id', t.id)
-      toast('기간 미정으로 옮겼어요', {
-        label: '되돌리기',
-        fn: async () => {
-          await sb().from('todos').update({ due_date: prev }).eq('id', t.id)
-          refresh()
-        },
-      })
-      refresh()
-      return
-    }
-    if (target.type === 'quad') {
-      await sb().from('todos').update({ quadrant: target.quad, sort_order: Date.now() % 1000000 }).eq('id', t.id)
-      toast(`'${QUADS.find((q) => q.key === target.quad)?.label}'로 옮겼어요`)
+    } else if (target.type === 'quad') {
+      await sb()
+        .from('todos')
+        .update({ quadrant: target.quad, sort_order: Date.now() % 1000000 })
+        .eq('id', t.id)
     } else {
-      const prev = t.due_date
       await sb().from('todos').update({ due_date: target.date }).eq('id', t.id)
-      const d = new Date(target.date + 'T00:00:00')
-      toast(`${d.getMonth() + 1}월 ${d.getDate()}일로 옮겼어요`, {
-        label: '되돌리기',
-        fn: async () => {
-          await sb().from('todos').update({ due_date: prev }).eq('id', t.id)
-          refresh()
-        },
-      })
     }
     refresh()
   }
@@ -274,10 +263,12 @@ export default function TodoPage() {
     t,
     chip = false,
     timeRight = false,
+    dateRight = false,
   }: {
     t: Todo
     chip?: boolean
     timeRight?: boolean
+    dateRight?: boolean
   }) => {
     const isPicked = pick?.todo.id === t.id
     return (
@@ -285,7 +276,7 @@ export default function TodoPage() {
         className={`select-none transition-all ${
           chip
             ? 'flex-none bg-[#F6F6F3] rounded-xl px-3 py-2 text-[11px] font-semibold cursor-pointer'
-            : `bg-[#F6F6F3] rounded-xl px-[11px] py-[9px] mb-1.5 text-[11px] font-semibold leading-snug cursor-pointer flex gap-1.5 ${timeRight ? 'items-center' : 'items-start'}`
+            : `bg-[#F6F6F3] rounded-xl px-[11px] py-[9px] mb-1.5 text-[11px] font-semibold leading-snug cursor-pointer flex gap-1.5 ${timeRight || dateRight ? 'items-center' : 'items-start'}`
         } ${t.is_done ? '!bg-transparent text-[#C4C4C0] line-through font-medium' : ''} ${
           isPicked && !pick?.dragging ? 'scale-[1.04] !bg-white shadow-lg outline outline-2 outline-paled no-underline' : ''
         } ${isPicked && pick?.dragging ? 'opacity-25' : ''}`}
@@ -296,14 +287,17 @@ export default function TodoPage() {
         }}
       >
         {t.template_id && <i className="not-italic text-[#9AA05E] text-[9px] mt-px flex-none">↻</i>}
-        <span className={timeRight ? 'flex-1' : ''}>
+        <span className={timeRight || dateRight ? 'flex-1' : ''}>
           {t.content}
-          {t.due_time && !timeRight && (
+          {t.due_time && !timeRight && !dateRight && (
             <span className="text-sub ml-1">{fmtTimeHM(t.due_time)}</span>
           )}
         </span>
         {timeRight && t.due_time && (
           <span className="text-sub text-[10px] flex-none tabular">{fmtTimeHM(t.due_time)}</span>
+        )}
+        {dateRight && t.due_date && (
+          <span className="text-sub text-[10px] flex-none tabular">{fmtSlash(t.due_date)}</span>
         )}
       </div>
     )
@@ -337,7 +331,9 @@ export default function TodoPage() {
       </Card>
       <div className="grid grid-cols-2 gap-[9px]">
         {QUADS.map((q) => {
-          const items = (matrixTodos ?? []).filter((t) => t.quadrant === q.key)
+          const items = (matrixTodos ?? [])
+            .filter((t) => t.quadrant === q.key)
+            .sort(todoCompare)
           const undone = items.filter((t) => !t.is_done).length
           const isHover = pick?.hover === `q:${q.key}`
           return (
@@ -363,7 +359,7 @@ export default function TodoPage() {
               </header>
               {items.map((t) => (
                 <div key={t.id} data-tcard>
-                  <TodoCard t={t} />
+                  <TodoCard t={t} dateRight />
                 </div>
               ))}
             </motion.div>
@@ -496,7 +492,7 @@ export default function TodoPage() {
         className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2 -mx-4 px-4"
       >
         {weekDays.map((d) => {
-          const items = (weekTodos ?? []).filter((t) => t.due_date === d)
+          const items = (weekTodos ?? []).filter((t) => t.due_date === d).sort(todoCompare)
           const isToday = d === today
           const isHover = pick?.hover === `c:${d}`
           return (

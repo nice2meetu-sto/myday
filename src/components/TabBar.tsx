@@ -22,7 +22,13 @@ export function TabBar() {
             className={`flex-1 border-0 py-[9px] rounded-[22px] text-[11px] font-bold transition-all ${
               isActive(t.path) ? 'bg-acc text-white' : 'bg-transparent text-sub'
             }`}
-            onClick={() => nav(t.path)}
+            onClick={() => {
+              if (isActive(t.path)) {
+                window.dispatchEvent(new Event(`tab-retap:${t.path}`))
+              } else {
+                nav(t.path)
+              }
+            }}
           >
             {t.label}
           </button>

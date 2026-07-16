@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { addMonths, endOfMonth, format, startOfMonth } from 'date-fns'
@@ -628,6 +628,14 @@ function QuotesView() {
 export default function HobbyPage() {
   const [view, setView] = useState<'shelf' | 'stats' | 'quotes'>('shelf')
   const [addOpen, setAddOpen] = useState(false)
+
+  // 탭바에서 취미 탭 재탭 → 책장/통계/필사 순환
+  useEffect(() => {
+    const onRetap = () =>
+      setView((v) => (v === 'shelf' ? 'stats' : v === 'stats' ? 'quotes' : 'shelf'))
+    window.addEventListener('tab-retap:/hobby', onRetap)
+    return () => window.removeEventListener('tab-retap:/hobby', onRetap)
+  }, [])
   return (
     <div>
       <PageHead title="취미" right={<AddButton onClick={() => setAddOpen(true)} />} />

@@ -72,3 +72,28 @@ export function fmtTimeHM(t: string | null | undefined): string {
   if (!t) return ''
   return t.slice(0, 5)
 }
+
+/** '7/17' 형식 */
+export function fmtSlash(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00')
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
+/** 할일 정렬: 미완료 우선 → 날짜/시간 있는 것 먼저 시간순 → 나머지 가나다 */
+export function todoCompare(
+  a: { is_done: boolean; due_date: string | null; due_time: string | null; content: string },
+  b: { is_done: boolean; due_date: string | null; due_time: string | null; content: string },
+): number {
+  if (a.is_done !== b.is_done) return a.is_done ? 1 : -1
+  const ad = a.due_date ?? ''
+  const bd = b.due_date ?? ''
+  if (ad && bd && ad !== bd) return ad < bd ? -1 : 1
+  if (ad && !bd) return -1
+  if (!ad && bd) return 1
+  const at = a.due_time ?? ''
+  const bt = b.due_time ?? ''
+  if (at && bt && at !== bt) return at < bt ? -1 : 1
+  if (at && !bt) return -1
+  if (!at && bt) return 1
+  return a.content.localeCompare(b.content, 'ko')
+}

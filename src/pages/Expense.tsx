@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { PieChart, Pie, Cell, ComposedChart, Bar, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
@@ -372,6 +372,13 @@ export default function ExpensePage() {
   const [mode, setMode] = useState<'month' | 'year'>('month')
   const [anchor, setAnchor] = useState(() => new Date())
   const [sheetOpen, setSheetOpen] = useState(false)
+
+  // 탭바에서 소비 탭 재탭 → 월/연 전환
+  useEffect(() => {
+    const onRetap = () => setMode((m) => (m === 'month' ? 'year' : 'month'))
+    window.addEventListener('tab-retap:/expense', onRetap)
+    return () => window.removeEventListener('tab-retap:/expense', onRetap)
+  }, [])
 
   const range = mode === 'month' ? monthRange(anchor) : yearRange(anchor)
   const prevAnchor = mode === 'month' ? addMonths(anchor, -1) : addYears(anchor, -1)

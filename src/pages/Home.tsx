@@ -9,7 +9,7 @@ import { BookCover, DiaryPhoto } from '../components/CoverImg'
 import { useBooks, updateBookPage, addQuote } from '../lib/books'
 import { pendingConfirmations } from '../lib/recurrence'
 import { useInvalidate, useUserId, useCategories, catName, catIcon } from '../lib/queries'
-import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, dayStartISO, nextDayStartISO } from '../lib/format'
+import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, dayStartISO, nextDayStartISO, todoCompare } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, Diary, MoneyEntry, Todo } from '../types'
@@ -59,10 +59,13 @@ function Weather() {
     queryKey: ['weather'],
     queryFn: async () => {
       const r = await fetch(
-        'https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.978&current=temperature_2m,weather_code',
+        'https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.978&current=temperature_2m,weather_code&daily=precipitation_probability_max&forecast_days=1&timezone=Asia%2FSeoul',
       )
       if (!r.ok) throw new Error('weather fail')
-      return (await r.json()) as { current: { temperature_2m: number; weather_code: number } }
+      return (await r.json()) as {
+        current: { temperature_2m: number; weather_code: number }
+        daily?: { precipitation_probability_max?: number[] }
+      }
     },
     staleTime: 30 * 60 * 1000,
     retry: 0,
@@ -70,10 +73,13 @@ function Weather() {
   if (!data) return null
   const code = data.current.weather_code
   const [, icon, label] = WEATHER_MAP.find(([codes]) => codes.includes(code)) ?? [[], '☀️', '']
+  const rain = data.daily?.precipitation_probability_max?.[0]
   return (
     <div className="flex items-center gap-2 text-[13px] text-sub font-semibold px-0.5 pt-1 pb-2.5">
       {icon} <b className="text-ink text-[15px]">{Math.round(data.current.temperature_2m)}°</b>
-      {label} · 서울
+      {label}
+      {rain != null && <span>· 💧{rain}%</span>}
+      <span>· 서울</span>
     </div>
   )
 }
@@ -182,11 +188,11 @@ function DayExpenseCard({ date, onOpen }: { date: string; onOpen: () => void }) 
   const total = (rows ?? []).reduce((s, r) => s + Number(r.amount), 0)
   const isToday = date === todayStr()
   return (
-    <Card onClick={onOpen} className="min-h-[170px]">
+    <Card onClick={onOpen} className="h-[180px] flex flex-col overflow-hidden">
       <Label>{isToday ? '오늘' : fmtDot(date)} 소비</Label>
       <div className="text-[24px] font-bold tracking-tighter tabular mt-0.5">{fmt(total)}</div>
-      <div className="mt-2.5">
-        {(rows ?? []).slice(0, 3).map((r) => (
+      <div className="mt-2 flex-1 overflow-y-auto no-scrollbar">
+        {(rows ?? []).map((r) => (
           <div
             key={r.id}
             className="flex justify-between text-[12px] py-[5px] border-b border-line last:border-0"
@@ -233,27 +239,34 @@ function DayTodoCard({ date }: { date: string }) {
       .eq('id', t.id)
     invalidate(['todos'])
   }
-  const list = (todos ?? []).slice(0, 3)
+  const list = (todos ?? []).slice().sort(todoCompare)
   const allDone = (todos ?? []).length > 0 && (todos ?? []).every((t) => t.is_done)
   return (
-    <Card className="!p-3.5 min-h-[170px]">
+    <Card className="!p-3.5 h-[180px] flex flex-col overflow-hidden">
       <Label className="mb-2">
         {isToday ? '오늘 할일' : `${fmtDot(date)} 할일`}
         {allDone && isToday && <span className="ml-1 text-[#9AA05E]">· 다 했어요 🎉</span>}
       </Label>
-      {!todos?.length && <div className="text-[11px] text-sub py-1">할일이 없어요</div>}
-      {list.map((t) => (
-        <div
-          key={t.id}
-          className={`rounded-xl px-[11px] py-[9px] mb-1.5 text-[11px] font-semibold leading-snug cursor-pointer transition-colors ${
-            t.is_done ? 'bg-transparent text-[#C4C4C0] line-through font-medium' : 'bg-[#F6F6F3]'
-          }`}
-          onClick={() => toggle(t)}
-        >
-          {t.template_id && <span className="text-[#9AA05E] text-[9px] mr-1">↻</span>}
-          {t.content}
-        </div>
-      ))}
+      <div className="flex-1 overflow-y-auto no-scrollbar">
+        {!todos?.length && <div className="text-[11px] text-sub py-1">할일이 없어요</div>}
+        {list.map((t) => (
+          <div
+            key={t.id}
+            className={`rounded-xl px-[11px] py-[9px] mb-1.5 text-[11px] font-semibold leading-snug cursor-pointer transition-colors flex items-center gap-1 ${
+              t.is_done ? 'bg-transparent text-[#C4C4C0] line-through font-medium' : 'bg-[#F6F6F3]'
+            }`}
+            onClick={() => toggle(t)}
+          >
+            {t.template_id && <span className="text-[#9AA05E] text-[9px]">↻</span>}
+            <span className="flex-1">{t.content}</span>
+            {t.due_time && (
+              <span className="text-sub text-[10px] flex-none tabular no-underline">
+                {fmtTimeHM(t.due_time)}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
     </Card>
   )
 }
@@ -291,7 +304,7 @@ function ReadingCard() {
 
   if (!book)
     return (
-      <Card>
+      <Card className="h-[180px]">
         <Label>읽는 중</Label>
         <EmptyState>읽는 중인 책이 없어요</EmptyState>
       </Card>
@@ -331,6 +344,7 @@ function ReadingCard() {
   return (
     <>
       <Card
+        className="h-[180px] overflow-hidden"
         onClick={() => {
           setPageInput(String(book.current_page))
           setOpen(true)
@@ -425,10 +439,10 @@ function MemoCard() {
   }
 
   return (
-    <Card className="!p-3.5">
+    <Card className="!p-3.5 h-[180px] flex flex-col overflow-hidden">
       <Label>메모</Label>
       <textarea
-        className="w-full border-0 outline-none resize-none text-[13px] text-[#555] leading-relaxed mt-1.5 min-h-[80px] bg-transparent"
+        className="w-full border-0 outline-none resize-none text-[13px] text-[#555] leading-relaxed mt-1.5 flex-1 bg-transparent overflow-y-auto"
         value={text ?? ''}
         placeholder="메모…"
         onChange={(e) => onChange(e.target.value)}
