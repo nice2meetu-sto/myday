@@ -6,7 +6,7 @@ import { BookCover } from '../components/CoverImg'
 import { useBook, useQuotes, updateBookPage, addQuote } from '../lib/books'
 import { deleteImage, uploadImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
-import { todayStr } from '../lib/format'
+import { todayStr, ymd } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote } from '../types'
@@ -28,10 +28,13 @@ function BookEditSheet({
   const [title, setTitle] = useState('')
   const [author, setAuthor] = useState('')
   const [pages, setPages] = useState('')
+  const [startedAt, setStartedAt] = useState('')
   const [coverMode, setCoverMode] = useState<'keep' | 'upload' | 'url'>('keep')
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverUrl, setCoverUrl] = useState('')
-  const [quoteEdits, setQuoteEdits] = useState<Record<string, { content: string; page: string }>>({})
+  const [quoteEdits, setQuoteEdits] = useState<
+    Record<string, { content: string; page: string; date: string }>
+  >({})
   const [busy, setBusy] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const loaded = useRef(false)
@@ -41,12 +44,20 @@ function BookEditSheet({
     setTitle(book.title)
     setAuthor(book.author ?? '')
     setPages(book.total_pages ? String(book.total_pages) : '')
+    setStartedAt(book.started_at ?? '')
     setCoverMode('keep')
     setCoverFile(null)
     setCoverUrl(book.cover_url?.startsWith('http') ? book.cover_url : '')
     setQuoteEdits(
       Object.fromEntries(
-        quotes.map((q) => [q.id, { content: q.content, page: q.page ? String(q.page) : '' }]),
+        quotes.map((q) => [
+          q.id,
+          {
+            content: q.content,
+            page: q.page ? String(q.page) : '',
+            date: ymd(new Date(q.created_at)),
+          },
+        ]),
       ),
     )
   }
@@ -62,6 +73,7 @@ function BookEditSheet({
       title: title.trim(),
       author: author.trim() || null,
       total_pages: parseInt(pages, 10) || null,
+      started_at: startedAt || null,
       updated_at: new Date().toISOString(),
     }
     if (coverMode === 'upload' && coverFile) {
@@ -84,17 +96,20 @@ function BookEditSheet({
       toastError('저장 실패', error)
       return
     }
-    // 변경된 필사만 갱신
+    // 변경된 필사만 갱신 (문장/쪽수/기록일)
     for (const q of quotes) {
       const edit = quoteEdits[q.id]
       if (!edit) continue
       const newPage = parseInt(edit.page, 10) || null
-      if (edit.content.trim() !== q.content || newPage !== q.page) {
+      const origDate = ymd(new Date(q.created_at))
+      const dateChanged = edit.date && edit.date !== origDate
+      if (edit.content.trim() !== q.content || newPage !== q.page || dateChanged) {
         if (!edit.content.trim()) continue
-        await sb()
-          .from('book_quotes')
-          .update({ content: edit.content.trim(), page: newPage })
-          .eq('id', q.id)
+        const upd: Record<string, unknown> = { content: edit.content.trim(), page: newPage }
+        if (dateChanged) {
+          upd.created_at = new Date(edit.date + 'T12:00:00').toISOString()
+        }
+        await sb().from('book_quotes').update(upd).eq('id', q.id)
       }
     }
     setBusy(false)
@@ -111,14 +126,28 @@ function BookEditSheet({
       <Field label="작가">
         <input className={inputCls} value={author} onChange={(e) => setAuthor(e.target.value)} />
       </Field>
-      <Field label="전체 쪽수">
-        <input
-          className={inputCls + ' !w-32'}
-          inputMode="numeric"
-          value={pages}
-          onChange={(e) => setPages(e.target.value.replace(/[^0-9]/g, ''))}
-        />
-      </Field>
+      <div className="flex gap-3">
+        <div className="w-[38%]">
+          <Field label="전체 쪽수">
+            <input
+              className={inputCls}
+              inputMode="numeric"
+              value={pages}
+              onChange={(e) => setPages(e.target.value.replace(/[^0-9]/g, ''))}
+            />
+          </Field>
+        </div>
+        <div className="flex-1">
+          <Field label="읽기 시작한 날">
+            <input
+              type="date"
+              className={inputCls}
+              value={startedAt}
+              onChange={(e) => setStartedAt(e.target.value)}
+            />
+          </Field>
+        </div>
+      </div>
       <Field label="표지">
         <SegmentedControl
           className="mb-2"
@@ -167,25 +196,43 @@ function BookEditSheet({
                 onChange={(e) =>
                   setQuoteEdits((prev) => ({
                     ...prev,
-                    [q.id]: { content: e.target.value, page: prev[q.id]?.page ?? '' },
+                    [q.id]: { ...prev[q.id], content: e.target.value },
                   }))
                 }
               />
-              <input
-                className={inputCls + ' !w-24 mt-1.5'}
-                inputMode="numeric"
-                placeholder="쪽수"
-                value={quoteEdits[q.id]?.page ?? ''}
-                onChange={(e) =>
-                  setQuoteEdits((prev) => ({
-                    ...prev,
-                    [q.id]: {
-                      content: prev[q.id]?.content ?? q.content,
-                      page: e.target.value.replace(/[^0-9]/g, ''),
-                    },
-                  }))
-                }
-              />
+              <div className="flex gap-2 mt-1.5">
+                <input
+                  className={inputCls + ' !w-20'}
+                  inputMode="numeric"
+                  placeholder="쪽수"
+                  value={quoteEdits[q.id]?.page ?? ''}
+                  onChange={(e) =>
+                    setQuoteEdits((prev) => ({
+                      ...prev,
+                      [q.id]: {
+                        ...prev[q.id],
+                        content: prev[q.id]?.content ?? q.content,
+                        page: e.target.value.replace(/[^0-9]/g, ''),
+                      },
+                    }))
+                  }
+                />
+                <input
+                  type="date"
+                  className={inputCls + ' flex-1'}
+                  value={quoteEdits[q.id]?.date ?? ''}
+                  onChange={(e) =>
+                    setQuoteEdits((prev) => ({
+                      ...prev,
+                      [q.id]: {
+                        ...prev[q.id],
+                        content: prev[q.id]?.content ?? q.content,
+                        date: e.target.value,
+                      },
+                    }))
+                  }
+                />
+              </div>
             </div>
           ))}
         </Field>

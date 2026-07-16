@@ -294,10 +294,10 @@ export default function TodoPage() {
           )}
         </span>
         {timeRight && t.due_time && (
-          <span className="text-sub text-[10px] flex-none tabular">{fmtTimeHM(t.due_time)}</span>
+          <span className="text-sub text-[9px] flex-none tabular">{fmtTimeHM(t.due_time)}</span>
         )}
         {dateRight && t.due_date && (
-          <span className="text-sub text-[10px] flex-none tabular">{fmtSlash(t.due_date)}</span>
+          <span className="text-sub text-[9px] flex-none tabular">{fmtSlash(t.due_date)}</span>
         )}
       </div>
     )
