@@ -1,0 +1,22 @@
+{
+  "name": "마이데이",
+  "short_name": "마이데이",
+  "description": "개인 라이프 로그 — 소비 · 할일 · 독서 · 일기",
+  "start_url": "/myday/#/",
+  "scope": "/myday/",
+  "display": "standalone",
+  "background_color": "#F7F7F5",
+  "theme_color": "#F7F7F5",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
