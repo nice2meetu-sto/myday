@@ -10,17 +10,34 @@ const TABS = [
 ]
 
 // 키보드가 올라오면 탭바를 숨긴다 (키보드 위로 떠오르는 것 방지)
+// 뷰포트 높이 비교는 안드로이드에서 layout viewport도 같이 줄어 감지가 안 되므로
+// 입력 요소 포커스 여부로 판단한다 — 키보드 높이 설정과 무관하게 동작
+const NO_KEYBOARD_TYPES = new Set([
+  'checkbox', 'radio', 'range', 'button', 'submit', 'reset', 'file', 'color',
+])
 function useKeyboardOpen() {
   const [open, setOpen] = useState(false)
   useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv) return
-    const check = () => setOpen(window.innerHeight - vv.height > 120)
-    vv.addEventListener('resize', check)
-    vv.addEventListener('scroll', check)
+    let t: ReturnType<typeof setTimeout>
+    const isTyping = () => {
+      const el = document.activeElement as HTMLElement | null
+      if (!el) return false
+      if (el.tagName === 'INPUT')
+        return !NO_KEYBOARD_TYPES.has((el as HTMLInputElement).type)
+      return el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable
+    }
+    const update = () => {
+      clearTimeout(t)
+      // 입력창 사이 포커스 이동 시 깜빡임 방지용 짧은 지연
+      t = setTimeout(() => setOpen(isTyping()), 80)
+    }
+    window.addEventListener('focusin', update)
+    window.addEventListener('focusout', update)
+    update()
     return () => {
-      vv.removeEventListener('resize', check)
-      vv.removeEventListener('scroll', check)
+      clearTimeout(t)
+      window.removeEventListener('focusin', update)
+      window.removeEventListener('focusout', update)
     }
   }, [])
   return open
