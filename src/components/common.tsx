@@ -79,12 +79,12 @@ export function SegmentedControl<T extends string>({
   className?: string
 }) {
   return (
-    <div className={`flex bg-[#EFEFEC] rounded-[14px] p-[3px] ${className}`}>
+    <div className={`flex bg-[#B7BD9E] rounded-[14px] p-[3px] ${className}`}>
       {options.map((o) => (
         <button
           key={o.value}
           className={`flex-1 border-0 py-2 rounded-[11px] text-[12px] font-bold transition-all ${
-            value === o.value ? 'bg-white text-ink shadow-sm' : 'bg-transparent text-sub'
+            value === o.value ? 'bg-white text-ink shadow-sm' : 'bg-transparent text-[#5C6047]'
           }`}
           onClick={() => onChange(o.value)}
         >
