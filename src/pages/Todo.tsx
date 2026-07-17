@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { addDays, addMonths, endOfMonth, format, startOfMonth, startOfWeek } from 'date-fns'
 import { motion } from 'framer-motion'
@@ -92,14 +93,13 @@ function useTodosNoDate() {
 }
 
 export default function TodoPage() {
+  const nav = useNavigate()
   const userId = useUserId()
   const invalidate = useInvalidate()
   const [view, setView] = useState<'mx' | 'cal'>('mx')
   const [sheetOpen, setSheetOpen] = useState(false)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [pick, setPick] = useState<PickState | null>(null)
-  const [swipeMenu, setSwipeMenu] = useState<Todo | null>(null)
-  const [editTodo, setEditTodo] = useState<Todo | null>(null)
   const [editTemplate, setEditTemplate] = useState<TodoTemplate | null>(null)
   const pickRef = useRef<PickState | null>(null)
   pickRef.current = pick
@@ -165,9 +165,6 @@ export default function TodoPage() {
     return null
   }
 
-  const lastTapRef = useRef<{ id: string; time: number } | null>(null)
-  const pendingToggleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
   const onCardPointerDown = (t: Todo, e: React.PointerEvent) => {
     if (t.is_done) return
     const startX = e.clientX
@@ -227,22 +224,8 @@ export default function TodoPage() {
         const cur = pickRef.current
         if (cur) {
           cancelPick()
-          return
-        }
-        // 더블탭 = 수정, 싱글탭 = 완료 토글 (280ms 대기로 구분)
-        const now = Date.now()
-        const last = lastTapRef.current
-        if (last && last.id === t.id && now - last.time < 280) {
-          if (pendingToggleRef.current) clearTimeout(pendingToggleRef.current)
-          pendingToggleRef.current = null
-          lastTapRef.current = null
-          setEditTodo(t)
         } else {
-          lastTapRef.current = { id: t.id, time: now }
-          pendingToggleRef.current = setTimeout(() => {
-            pendingToggleRef.current = null
-            toggleDone(t)
-          }, 280)
+          toggleDone(t)
         }
       }
     }
@@ -550,6 +533,7 @@ export default function TodoPage() {
         title="할일"
         right={
           <>
+            <AddButton light icon="✎" onClick={() => nav('/todo/edit')} />
             <AddButton light icon="↻" onClick={() => setTemplatesOpen(true)} />
             <AddButton onClick={() => setSheetOpen(true)} />
           </>
@@ -580,19 +564,6 @@ export default function TodoPage() {
       )}
 
       <TodoSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
-      <TodoSheet open={!!editTodo} onClose={() => setEditTodo(null)} edit={editTodo} />
-      <SwipeMenuSheet
-        todo={swipeMenu}
-        onClose={() => setSwipeMenu(null)}
-        onEditTodo={(t) => {
-          setSwipeMenu(null)
-          setEditTodo(t)
-        }}
-        onEditTemplate={(tpl) => {
-          setSwipeMenu(null)
-          setEditTemplate(tpl)
-        }}
-      />
       <TemplateListSheet
         open={templatesOpen}
         onClose={() => setTemplatesOpen(false)}

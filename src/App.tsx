@@ -12,6 +12,7 @@ import ExpenseEditPage from './pages/ExpenseEdit'
 import HobbyPage from './pages/Hobby'
 import BookDetailPage from './pages/BookDetail'
 import TodoPage from './pages/Todo'
+import TodoEditPage from './pages/TodoEdit'
 import DiaryPage from './pages/Diary'
 
 function DbSetupNeeded({ detail }: { detail: string }) {
@@ -90,6 +91,7 @@ export default function App() {
         <Route path="/hobby" element={<HobbyPage />} />
         <Route path="/hobby/:bookId" element={<BookDetailPage />} />
         <Route path="/todo" element={<TodoPage />} />
+        <Route path="/todo/edit" element={<TodoEditPage />} />
         <Route path="/diary" element={<DiaryPage />} />
       </Routes>
       <TabBar />
