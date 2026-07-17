@@ -63,3 +63,11 @@ body.moving {
   user-select: none;
   -webkit-user-select: none;
 }
+
+/* Recharts 조각 탭 시 생기는 포커스 외곽선 제거 */
+.recharts-wrapper,
+.recharts-wrapper *:focus,
+.recharts-sector:focus,
+.recharts-surface:focus {
+  outline: none !important;
+}

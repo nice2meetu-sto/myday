@@ -15,6 +15,14 @@ import type { MoneyEntry, Saving } from '../types'
 
 const FALLBACK_COLORS = ['#C7976F', '#FFDE70', '#A3C4EB', '#D0BC98', '#C7CE9A']
 
+/** hex 색상을 진하게 (0.8 = 20% 어둡게) */
+function darken(hex: string, factor = 0.78): string {
+  const m = hex.replace('#', '')
+  if (m.length !== 6) return hex
+  const [r, g, b] = [0, 2, 4].map((i) => Math.round(parseInt(m.slice(i, i + 2), 16) * factor))
+  return `#${[r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('')}`
+}
+
 function DeltaLine({ cur, prev, label }: { cur: number; prev: number; label: string }) {
   if (!prev) return <div className="text-[11px] font-bold mt-1 text-sub">— {label}</div>
   const pct = ((cur - prev) / prev) * 100
@@ -93,10 +101,16 @@ function Donut({
             innerRadius={32}
             outerRadius={52}
             strokeWidth={2}
+            isAnimationActive={false}
             onClick={(d) => setDrill(drill === d.id ? null : (d.id as string))}
           >
             {byMajor.items.map((e) => (
-              <Cell key={e.id} fill={e.color} cursor="pointer" />
+              <Cell
+                key={e.id}
+                fill={drill === e.id ? darken(e.color) : e.color}
+                cursor="pointer"
+                tabIndex={-1}
+              />
             ))}
           </Pie>
         </PieChart>
