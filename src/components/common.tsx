@@ -25,7 +25,7 @@ export function Card({
       {...popIn}
       whileTap={{ scale: 0.98 }}
       whileHover={onClick ? { scale: 1.01 } : undefined}
-      className={`bg-card rounded-card p-[18px] shadow-card ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      className={`bg-card rounded-card p-[18px] shadow-card border border-black/10 ${onClick ? 'cursor-pointer' : ''} ${className}`}
       onClick={onClick}
       style={style}
     >

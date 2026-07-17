@@ -483,7 +483,7 @@ export default function BookDetailPage() {
       {(quotes ?? []).map((q) => (
         <div
           key={q.id}
-          className="bg-cream rounded-card p-[18px] mb-3 shadow-card select-none"
+          className="bg-cream rounded-card p-[18px] mb-3 shadow-card border border-black/10 select-none"
           onPointerDown={() => deleteQuote(q.id)}
         >
           <p className="m-0 font-serif text-[13px] leading-[1.7] text-[#3d3628]">“{q.content}”</p>

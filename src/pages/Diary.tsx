@@ -181,7 +181,7 @@ function DiaryCalendar({ onOpen }: { onOpen: (d: Diary) => void }) {
   const daysInMonth = endOfMonth(anchor).getDate()
 
   return (
-    <motion.div {...popIn} className="bg-white rounded-card p-4 mb-3 shadow-card">
+    <motion.div {...popIn} className="bg-white rounded-card p-4 mb-3 shadow-card border border-black/10">
       <PeriodNav
         label={format(anchor, 'yyyy년 M월')}
         onPrev={() => {
@@ -319,7 +319,7 @@ export default function DiaryPage() {
               {...popIn}
               whileTap={{ scale: 0.98 }}
               key={d.id}
-              className="bg-white rounded-card mb-3 shadow-card cursor-pointer p-4 flex gap-3 items-center"
+              className="bg-white rounded-card mb-3 shadow-card border border-black/10 cursor-pointer p-4 flex gap-3 items-center"
               onClick={() => setDetail(d)}
             >
               {d.photo_url && (

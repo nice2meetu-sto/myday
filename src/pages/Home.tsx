@@ -104,7 +104,7 @@ function RandomQuote() {
   const book = (books ?? []).find((b) => b.id === quote.book_id)
   return (
     <div
-      className="bg-cream rounded-[18px] px-4 py-3.5 mb-3 cursor-pointer"
+      className="bg-cream rounded-[18px] px-4 py-3.5 mb-3 border border-black/10 cursor-pointer"
       onClick={() => setSeed((s) => s + 1)}
     >
       <p className="m-0 font-serif text-[12.5px] leading-[1.6] text-[#3d3628]">“{quote.content}”</p>

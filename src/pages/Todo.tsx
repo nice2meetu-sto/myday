@@ -341,7 +341,7 @@ export default function TodoPage() {
               {...popIn}
               key={q.key}
               data-quad={q.key}
-              className={`quad bg-white rounded-[18px] p-2.5 min-h-[220px] shadow-card transition-colors ${
+              className={`quad bg-white rounded-[18px] p-2.5 min-h-[220px] shadow-card border border-black/10 transition-colors ${
                 isHover ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
               }`}
               onClick={(e) => {
@@ -432,7 +432,7 @@ export default function TodoPage() {
           </div>
         </Card>
       </div>
-      <motion.div {...popIn} className="bg-white rounded-card p-4 shadow-card">
+      <motion.div {...popIn} className="bg-white rounded-card p-4 shadow-card border border-black/10">
         <PeriodNav
           label={format(anchor, 'yyyy년 M월')}
           onPrev={() => setAnchor(addMonths(anchor, -1))}
@@ -501,7 +501,7 @@ export default function TodoPage() {
               key={d}
               data-caldate={d}
               data-weekcard={d}
-              className={`flex-none w-[53%] max-w-[220px] snap-center bg-white rounded-card p-3.5 min-h-[120px] shadow-card transition-colors ${
+              className={`flex-none w-[53%] max-w-[220px] snap-center bg-white rounded-card p-3.5 min-h-[120px] shadow-card border border-black/10 transition-colors ${
                 isHover ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
               }`}
               onClick={(e) => {
