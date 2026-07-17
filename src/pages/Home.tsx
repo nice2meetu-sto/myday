@@ -32,11 +32,9 @@ function Greeting() {
   for (let i = 0; i < today.length; i++) h = (h * 31 + today.charCodeAt(i)) % 99991
   const phrase = GREETINGS[h % GREETINGS.length]
   return (
-    <div className="pt-2 pb-3 px-0.5">
+    <div className="pt-2 pb-1 px-0.5">
       <h1 className="text-[24px] font-extrabold tracking-tight leading-[1.35] m-0">
-        수민님,
-        <br />
-        {phrase}
+        수민님, {phrase}
       </h1>
     </div>
   )
@@ -75,7 +73,7 @@ function Weather() {
   const [, icon, label] = WEATHER_MAP.find(([codes]) => codes.includes(code)) ?? [[], '☀️', '']
   const rain = data.daily?.precipitation_probability_max?.[0]
   return (
-    <div className="flex items-center gap-2 text-[13px] text-sub font-semibold px-0.5 pt-1 pb-2.5">
+    <div className="flex items-center gap-2 text-[13px] text-sub font-semibold px-0.5 pt-0 pb-2.5">
       {icon} <b className="text-ink text-[15px]">{Math.round(data.current.temperature_2m)}°</b>
       {label}
       {rain != null && <span>· 💧{rain}%</span>}
