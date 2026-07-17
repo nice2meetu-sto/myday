@@ -215,8 +215,19 @@ export default function TodoPage() {
       if (lifted) {
         if (dragged) {
           const target = findTarget(ev.clientX, ev.clientY)
-          if (target) placeTodo(t, target)
-          else if (view === 'cal' && t.due_date) placeTodo(t, { type: 'nodate' })
+          if (target) {
+            placeTodo(t, target)
+          } else if (view === 'cal' && t.due_date) {
+            // 캘린더: 타겟 없는 곳에 놓으면 기간 해제
+            placeTodo(t, { type: 'nodate' })
+          } else if (view === 'mx' && t.quadrant) {
+            // 매트릭스: 사분면 밖에 놓으면 구분 해제 → 미분류 칩으로
+            sb()
+              .from('todos')
+              .update({ quadrant: null })
+              .eq('id', t.id)
+              .then(() => refresh())
+          }
           cancelPick()
         }
         // dragged=false → picked 유지: 탭-투-플레이스 모드
