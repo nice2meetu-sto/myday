@@ -33,8 +33,10 @@ function Greeting() {
   const phrase = GREETINGS[h % GREETINGS.length]
   return (
     <div className="pt-2 pb-1 px-0.5">
-      <h1 className="text-[24px] font-extrabold tracking-tight leading-[1.35] m-0">
-        수민님, {phrase}
+      <h1 className="text-[20px] font-extrabold tracking-tight leading-[1.35] m-0">
+        수민님,
+        <br />
+        {phrase}
       </h1>
     </div>
   )
