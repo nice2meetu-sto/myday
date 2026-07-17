@@ -188,7 +188,7 @@ function DayExpenseCard({ date, onOpen }: { date: string; onOpen: () => void }) 
   const total = (rows ?? []).reduce((s, r) => s + Number(r.amount), 0)
   const isToday = date === todayStr()
   return (
-    <Card onClick={onOpen} className="h-[175px] flex flex-col overflow-hidden">
+    <Card onClick={onOpen} className="!p-3.5 h-[175px] flex flex-col overflow-hidden">
       <Label>{isToday ? '오늘' : fmtDot(date)} 소비</Label>
       <div className="text-[24px] font-bold tracking-tighter tabular mt-[1px]">{fmt(total)}</div>
       <div className="mt-[5px] flex-1 overflow-y-auto no-scrollbar">
