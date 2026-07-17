@@ -181,7 +181,7 @@ function DiaryCalendar({ onOpen }: { onOpen: (d: Diary) => void }) {
   const daysInMonth = endOfMonth(anchor).getDate()
 
   return (
-    <motion.div {...popIn} className="bg-white rounded-card p-4 mb-3">
+    <motion.div {...popIn} className="bg-white rounded-card p-4 mb-3 shadow-card">
       <PeriodNav
         label={format(anchor, 'yyyy년 M월')}
         onPrev={() => {

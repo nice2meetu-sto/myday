@@ -501,7 +501,7 @@ export default function TodoPage() {
               key={d}
               data-caldate={d}
               data-weekcard={d}
-              className={`flex-none w-[53%] max-w-[220px] snap-center bg-white rounded-card p-3.5 min-h-[120px] transition-colors ${
+              className={`flex-none w-[53%] max-w-[220px] snap-center bg-white rounded-card p-3.5 min-h-[120px] shadow-card transition-colors ${
                 isHover ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
               }`}
               onClick={(e) => {

@@ -25,7 +25,7 @@ export default {
         card: '22px',
       },
       boxShadow: {
-        card: 'none',
+        card: '0 1px 2px rgba(130, 133, 106, 0.10), 0 4px 10px rgba(130, 133, 106, 0.12)',
       },
       fontFamily: {
         sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
