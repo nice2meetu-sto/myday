@@ -277,7 +277,7 @@ export default function TodoPage() {
           chip
             ? 'flex-none bg-[#F6F6F3] rounded-xl px-3 py-2 text-[11px] font-semibold cursor-pointer'
             : `bg-[#F6F6F3] rounded-xl px-[11px] py-[9px] mb-1.5 text-[11px] font-semibold leading-snug cursor-pointer flex gap-1.5 ${timeRight || dateRight ? 'items-center' : 'items-start'}`
-        } ${t.is_done ? '!bg-transparent text-[#C4C4C0] line-through font-medium' : ''} ${
+        } ${t.is_done ? '!bg-[#F1F1EF] text-[#C4C4C0] line-through font-medium' : ''} ${
           isPicked && !pick?.dragging ? 'scale-[1.04] !bg-white shadow-lg outline outline-2 outline-paled no-underline' : ''
         } ${isPicked && pick?.dragging ? 'opacity-25' : ''}`}
         style={{ touchAction: t.is_done ? 'auto' : 'none' }}
