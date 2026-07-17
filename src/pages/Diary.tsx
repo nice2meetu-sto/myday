@@ -286,11 +286,13 @@ export default function DiaryPage() {
   const [detail, setDetail] = useState<Diary | null>(null)
   const [editing, setEditing] = useState<Diary | null>(null)
 
+  const searching = !!search.trim()
   const grouped = useMemo(() => {
     const map = new Map<string, Diary[]>()
     const q = search.trim()
+    if (!q) return []
     ;(diaries ?? [])
-      .filter((d) => !q || (d.content ?? '').includes(q))
+      .filter((d) => (d.content ?? '').includes(q))
       .forEach((d) => {
         if (!map.has(d.entry_date)) map.set(d.entry_date, [])
         map.get(d.entry_date)!.push(d)
@@ -317,8 +319,9 @@ export default function DiaryPage() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
-      <DiaryCalendar onOpen={(d) => setDetail(d)} />
-      {!grouped.length && <EmptyState>첫 일기를 남겨보세요</EmptyState>}
+      {/* 검색 중에는 달력 숨김, 평소에는 달력만 (일자 탭 → 그날 일기) */}
+      {!searching && <DiaryCalendar onOpen={(d) => setDetail(d)} />}
+      {searching && !grouped.length && <EmptyState>검색 결과가 없어요</EmptyState>}
       {grouped.map(([date, items]) => (
         <div key={date}>
           <div className="text-[11px] font-extrabold text-sub mx-0.5 mt-3.5 mb-2">
@@ -355,7 +358,7 @@ export default function DiaryPage() {
           ))}
         </div>
       ))}
-      {(diaries ?? []).length >= limit && (
+      {searching && (diaries ?? []).length >= limit && (
         <button
           className="w-full border-0 bg-white shadow-card rounded-xl text-[12px] font-bold py-3 mb-3"
           onClick={() => setLimit(limit + PAGE)}
