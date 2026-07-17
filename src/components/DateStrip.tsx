@@ -46,7 +46,7 @@ export function DateStrip({
             }`}
             onClick={() => onSelect(key)}
           >
-            <small className={`block text-[9px] font-bold ${on ? 'text-white/55' : 'text-sub'}`}>
+            <small className={`block text-[9px] font-bold ${on ? 'text-white' : 'text-sub'}`}>
               {DAY_NAMES[d.getDay()]}
             </small>
             <b className="text-[16px] font-bold">{d.getDate()}</b>

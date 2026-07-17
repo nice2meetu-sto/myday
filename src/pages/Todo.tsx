@@ -165,13 +165,15 @@ export default function TodoPage() {
     return null
   }
 
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null)
+  const pendingToggleRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const onCardPointerDown = (t: Todo, e: React.PointerEvent) => {
     if (t.is_done) return
     const startX = e.clientX
     const startY = e.clientY
     let lifted = false
     let dragged = false
-    let swiped = false
 
     const timer = setTimeout(() => {
       lifted = true
@@ -184,10 +186,7 @@ export default function TodoPage() {
       const dx = ev.clientX - startX
       const dy = ev.clientY - startY
       if (!lifted) {
-        if (Math.hypot(dx, dy) > 8) {
-          clearTimeout(timer)
-          if (dx < -40 && Math.abs(dy) < 30) swiped = true
-        }
+        if (Math.hypot(dx, dy) > 8) clearTimeout(timer)
         return
       }
       ev.preventDefault()
@@ -220,19 +219,30 @@ export default function TodoPage() {
         if (dragged) {
           const target = findTarget(ev.clientX, ev.clientY)
           if (target) placeTodo(t, target)
+          else if (view === 'cal' && t.due_date) placeTodo(t, { type: 'nodate' })
           cancelPick()
         }
         // dragged=false → picked 유지: 탭-투-플레이스 모드
       } else {
-        if (swiped) {
-          setSwipeMenu(t)
-          return
-        }
         const cur = pickRef.current
         if (cur) {
           cancelPick()
+          return
+        }
+        // 더블탭 = 수정, 싱글탭 = 완료 토글 (280ms 대기로 구분)
+        const now = Date.now()
+        const last = lastTapRef.current
+        if (last && last.id === t.id && now - last.time < 280) {
+          if (pendingToggleRef.current) clearTimeout(pendingToggleRef.current)
+          pendingToggleRef.current = null
+          lastTapRef.current = null
+          setEditTodo(t)
         } else {
-          toggleDone(t)
+          lastTapRef.current = { id: t.id, time: now }
+          pendingToggleRef.current = setTimeout(() => {
+            pendingToggleRef.current = null
+            toggleDone(t)
+          }, 280)
         }
       }
     }
@@ -419,19 +429,21 @@ export default function TodoPage() {
 
   const calView = (
     <>
-      <div data-nodate>
-        <Card
-          className={`!p-3 mb-3 mt-1 min-h-[54px] transition-colors ${
-            pick?.hover === 'nd' ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
-          }`}
-        >
-          <div className="flex gap-[7px] flex-wrap min-h-[30px] items-center">
-            {(noDateTodos ?? []).map((t) => (
-              <TodoCard key={t.id} t={t} chip />
-            ))}
-          </div>
-        </Card>
-      </div>
+      {(noDateTodos?.length ?? 0) > 0 && (
+        <div data-nodate>
+          <Card
+            className={`!p-3 mb-3 mt-1 transition-colors ${
+              pick?.hover === 'nd' ? '!bg-pale outline outline-[1.5px] outline-paled' : ''
+            }`}
+          >
+            <div className="flex gap-[7px] flex-wrap items-center">
+              {(noDateTodos ?? []).map((t) => (
+                <TodoCard key={t.id} t={t} chip />
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
       <motion.div {...popIn} className="bg-white rounded-card p-4 shadow-card border border-black/10">
         <PeriodNav
           label={format(anchor, 'yyyy년 M월')}
@@ -489,7 +501,7 @@ export default function TodoPage() {
       <h3 className="text-[13px] font-extrabold mx-0.5 mt-4 mb-2">이번주 할일</h3>
       <div
         ref={weekRef}
-        className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-2 -mx-4 px-4"
+        className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory no-scrollbar pt-2 -mt-2 pb-2 -mx-4 px-4"
       >
         {weekDays.map((d) => {
           const items = (weekTodos ?? []).filter((t) => t.due_date === d).sort(todoCompare)
@@ -773,7 +785,32 @@ function TodoSheet({
           )}
         </div>
       )}
-      <SaveButton onClick={save} />
+      {edit ? (
+        <div className="flex gap-2 items-end">
+          <button
+            className="flex-1 border-0 rounded-[14px] py-[13px] font-bold text-[13px] bg-[#F2F2EF] text-warn mt-1"
+            onClick={async () => {
+              if (!confirm('이 할일을 삭제할까요?')) return
+              if (edit.template_id) {
+                // 반복 인스턴스는 tombstone — 재생성 방지
+                await sb().from('todos').update({ is_skipped: true }).eq('id', edit.id)
+              } else {
+                await sb().from('todos').delete().eq('id', edit.id)
+              }
+              invalidate(['todos'])
+              toast('삭제했어요')
+              onClose()
+            }}
+          >
+            삭제
+          </button>
+          <div className="flex-1">
+            <SaveButton onClick={save} />
+          </div>
+        </div>
+      ) : (
+        <SaveButton onClick={save} />
+      )}
     </BottomSheet>
   )
 }

@@ -84,14 +84,14 @@ function Donut({
 
   if (!byMajor.items.length)
     return (
-      <Card className="mb-3">
+      <Card className="mb-2">
         <Label className="mb-2">{title}</Label>
         <EmptyState>아직 내역이 없어요</EmptyState>
       </Card>
     )
 
   return (
-    <Card className="mb-3">
+    <Card className="mb-2">
       <Label className="mb-3.5">{title}</Label>
       <div className="flex items-center gap-4">
         <PieChart width={110} height={110}>
@@ -204,7 +204,7 @@ function BudgetCard({ anchor, spent }: { anchor: Date; spent: number }) {
 
   return (
     <>
-      <Card className="mb-3" onClick={openSheet}>
+      <Card className="mb-2" onClick={openSheet}>
         <Label>이번달 예산 잔액</Label>
         {!budget ? (
           <EmptyState>이번달 예산을 정해보세요</EmptyState>
@@ -293,7 +293,7 @@ function TrendChart({ mode, anchor }: { mode: 'month' | 'year'; anchor: Date }) 
   }, [summary, mode, anchor])
 
   return (
-    <Card className="mb-3">
+    <Card className="mb-2">
       <Label>최근 6{mode === 'month' ? '개월' : '년'}</Label>
       <div className="h-[150px] mt-2">
         <ResponsiveContainer width="100%" height="100%">
@@ -334,7 +334,7 @@ function SavingsView({ anchor }: { anchor: Date }) {
 
   return (
     <>
-      <Card className="mb-3" style={{ background: '#FFDE70' }}>
+      <Card className="mb-2" style={{ background: '#FFDE70' }}>
         <Label className="!text-[#8a7420]">이번달 남은돈</Label>
         <StatNumber value={remaining} warn={remaining < 0} />
         <div className="flex gap-6 mt-4">
@@ -435,7 +435,7 @@ export default function ExpensePage() {
         onChange={setMode}
       />
       <PeriodNav label={label} onPrev={() => move(-1)} onNext={() => move(1)} />
-      <div className="grid grid-cols-2 gap-3 mb-3">
+      <div className="grid grid-cols-2 gap-2 mb-2">
         <Card>
           <Label>소비</Label>
           <StatNumber size="sm" value={sumAmount(expenses)} />
@@ -450,7 +450,7 @@ export default function ExpensePage() {
       {mode === 'month' && <BudgetCard anchor={anchor} spent={sumAmount(expenses)} />}
       <Donut title="카테고리별 소비" rows={(expenses ?? []) as MoneyEntry[]} kind="expense" />
       <Donut title="카테고리별 수입" rows={(incomes ?? []) as MoneyEntry[]} kind="income" />
-      <Card className="mb-3">
+      <Card className="mb-2">
         <Label>{mode === 'month' ? '이번달' : '올해'} 저축</Label>
         <StatNumber size="sm" value={sumAmount(savings)} />
         <DeltaLine cur={sumAmount(savings)} prev={sumAmount(prevSavings)} label={unit} />

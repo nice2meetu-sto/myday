@@ -279,6 +279,7 @@ function DiaryCalendar({ onOpen }: { onOpen: (d: Diary) => void }) {
 
 export default function DiaryPage() {
   const [limit, setLimit] = useState(PAGE)
+  const [search, setSearch] = useState('')
   const { data: diaries } = useDiaries(limit)
   const invalidate = useInvalidate()
   const [writing, setWriting] = useState(false)
@@ -287,13 +288,16 @@ export default function DiaryPage() {
 
   const grouped = useMemo(() => {
     const map = new Map<string, Diary[]>()
-    ;(diaries ?? []).forEach((d) => {
-      if (!map.has(d.entry_date)) map.set(d.entry_date, [])
-      map.get(d.entry_date)!.push(d)
-    })
+    const q = search.trim()
+    ;(diaries ?? [])
+      .filter((d) => !q || (d.content ?? '').includes(q))
+      .forEach((d) => {
+        if (!map.has(d.entry_date)) map.set(d.entry_date, [])
+        map.get(d.entry_date)!.push(d)
+      })
     // 같은 날짜는 시간순 (오름차순 아님 — 최신이 위)
     return [...map.entries()]
-  }, [diaries])
+  }, [diaries, search])
 
   const remove = async (d: Diary) => {
     if (!confirm('이 일기를 삭제할까요?')) return
@@ -307,6 +311,12 @@ export default function DiaryPage() {
   return (
     <div>
       <PageHead title="일기" right={<AddButton onClick={() => setWriting(true)} />} />
+      <input
+        className="w-full border border-black/10 rounded-xl px-3.5 py-[10px] font-semibold text-[13px] outline-none bg-white mb-3 placeholder:text-[#B8B8B4]"
+        placeholder="🔍 일기 내용 검색"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
       <DiaryCalendar onOpen={(d) => setDetail(d)} />
       {!grouped.length && <EmptyState>첫 일기를 남겨보세요</EmptyState>}
       {grouped.map(([date, items]) => (
@@ -319,7 +329,7 @@ export default function DiaryPage() {
               {...popIn}
               whileTap={{ scale: 0.98 }}
               key={d.id}
-              className="bg-white rounded-card mb-3 shadow-card border border-black/10 cursor-pointer p-4 flex gap-3 items-center"
+              className="bg-white rounded-card mb-3 shadow-card border border-black/10 cursor-pointer p-3 flex gap-3 items-center"
               onClick={() => setDetail(d)}
             >
               {d.photo_url && (
