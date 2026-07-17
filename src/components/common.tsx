@@ -79,7 +79,7 @@ export function SegmentedControl<T extends string>({
   className?: string
 }) {
   return (
-    <div className={`flex bg-[#BAAF9D] rounded-[14px] p-[3px] ${className}`}>
+    <div className={`flex bg-[#D8D1C3] rounded-[14px] p-[3px] ${className}`}>
       {options.map((o) => (
         <button
           key={o.value}
