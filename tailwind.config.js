@@ -10,7 +10,7 @@ export default {
         sub: '#8E8E93',
         line: '#EDEDEA',
         warn: '#B44B28',
-        acc: '#82856A',
+        acc: '#BAAF9D',
         exp: '#C7976F',
         inc: '#C7CE9A',
         hl: '#FFDE70',
