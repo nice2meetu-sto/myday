@@ -451,24 +451,41 @@ function MemoCard() {
   )
 }
 
-// ---------------- 일기 카드 (오늘 = 어제 일기, 과거 날짜 = 그 날짜 일기) ----------------
+// ---------------- 일기 카드 (오늘 = 가장 최신 일기, 과거 날짜 = 그 날짜 일기) ----------------
 function DayDiaryCard({ date }: { date: string }) {
   const isToday = date === todayStr()
-  const target = isToday ? ymd(addDays(new Date(date + 'T00:00:00'), -1)) : date
-  const label = isToday ? '어제 일기' : `${fmtDot(target)} 일기`
   const { data: diaries } = useQuery({
-    queryKey: ['diaries', 'day', target],
+    queryKey: ['diaries', 'day', isToday ? 'latest' : date],
     queryFn: async () => {
-      const { data, error } = await sb()
-        .from('diaries')
-        .select('*')
-        .eq('entry_date', target)
+      let q = sb().from('diaries').select('*')
+      if (isToday) {
+        // 오늘: 날짜 상관없이 가장 최신 일기 (오늘 썼으면 오늘 일기)
+        q = q.order('entry_date', { ascending: false })
+      } else {
+        q = q.eq('entry_date', date)
+      }
+      const { data, error } = await q
         .order('entry_time', { ascending: false, nullsFirst: false })
+        .limit(20)
       if (error) throw error
       return data as Diary[]
     },
   })
   const latest = diaries?.[0]
+  // 배지는 같은 날짜에 쓴 일기 개수 기준
+  const sameDayCount = latest
+    ? (diaries ?? []).filter((d) => d.entry_date === latest.entry_date).length
+    : 0
+  const yesterday = ymd(addDays(new Date(todayStr() + 'T00:00:00'), -1))
+  const label = !latest
+    ? '일기'
+    : !isToday
+      ? `${fmtDot(date)} 일기`
+      : latest.entry_date === todayStr()
+        ? '오늘 일기'
+        : latest.entry_date === yesterday
+          ? '어제 일기'
+          : `${fmtDot(latest.entry_date)} 일기`
   return (
     <Card className="flex gap-3 items-center !p-3 h-[100px] overflow-hidden">
       {latest?.photo_url && (
@@ -480,9 +497,9 @@ function DayDiaryCard({ date }: { date: string }) {
           {latest?.entry_time && (
             <span className="ml-1 font-semibold">{fmtTimeHM(latest.entry_time)}</span>
           )}
-          {(diaries?.length ?? 0) > 1 && (
+          {sameDayCount > 1 && (
             <span className="ml-1.5 bg-sage rounded-md px-1.5 py-0.5 text-[9px] text-[#3d5548] font-bold">
-              +{diaries!.length - 1}개 더
+              +{sameDayCount - 1}개 더
             </span>
           )}
         </Label>
@@ -494,7 +511,7 @@ function DayDiaryCard({ date }: { date: string }) {
           </div>
         ) : (
           <p className="mt-1 mb-0 text-[12px] text-sub">
-            {isToday ? '어제는 기록이 없어요' : '이 날은 기록이 없어요'}
+            {isToday ? '아직 기록이 없어요' : '이 날은 기록이 없어요'}
           </p>
         )}
       </div>
