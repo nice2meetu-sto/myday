@@ -30,14 +30,16 @@ function useDiaries(limit: number) {
   })
 }
 
-function DiarySheet({
+export function DiarySheet({
   open,
   onClose,
   edit,
+  initialDate,
 }: {
   open: boolean
   onClose: () => void
   edit?: Diary | null
+  initialDate?: string
 }) {
   const userId = useUserId()
   const invalidate = useInvalidate()
@@ -58,7 +60,7 @@ function DiarySheet({
   }
   if (open && !edit && loaded.current !== 'new') {
     loaded.current = 'new'
-    setDate(todayStr())
+    setDate(initialDate ?? todayStr())
     const now = new Date()
     setTime(
       `${`${now.getHours()}`.padStart(2, '0')}:${`${now.getMinutes()}`.padStart(2, '0')}`,

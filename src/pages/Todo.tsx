@@ -589,14 +589,16 @@ export default function TodoPage() {
 }
 
 // ---------------- 할일 입력/수정 시트 ----------------
-function TodoSheet({
+export function TodoSheet({
   open,
   onClose,
   edit,
+  initialDate,
 }: {
   open: boolean
   onClose: () => void
   edit?: Todo | null
+  initialDate?: string
 }) {
   const userId = useUserId()
   const invalidate = useInvalidate()
@@ -616,6 +618,14 @@ function TodoSheet({
     setQuadrant(edit.quadrant)
     setDueDate(edit.due_date ?? '')
     setDueTime(edit.due_time?.slice(0, 5) ?? '')
+    setRepeat(false)
+  }
+  if (open && !edit && loaded.current !== 'new') {
+    loaded.current = 'new'
+    setContent('')
+    setQuadrant(null)
+    setDueDate(initialDate ?? '')
+    setDueTime('')
     setRepeat(false)
   }
   if (!open && loaded.current) loaded.current = null

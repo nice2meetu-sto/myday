@@ -34,11 +34,13 @@ export function MoneySheet({
   open,
   onClose,
   initialKind = 'expense',
+  initialDate,
   edit,
 }: {
   open: boolean
   onClose: () => void
   initialKind?: MoneyKind
+  initialDate?: string
   edit?: MoneyEditTarget | null
 }) {
   const userId = useUserId()
@@ -93,12 +95,13 @@ export function MoneySheet({
       setMinor(null)
       setPm(localStorage.getItem('myday-last-pm'))
       setMemo('')
-      setWhen(nowLocalInput())
+      // 선택한 날짜가 있으면 그 날짜 + 현재 시각으로, 없으면 지금
+      setWhen(initialDate ? `${initialDate}T${nowLocalInput().slice(11)}` : nowLocalInput())
       setEditWhen(false)
       setRecur(false)
       setTimeout(() => amtRef.current?.focus(), 350)
     }
-  }, [open, edit, initialKind])
+  }, [open, edit, initialKind, initialDate])
 
   const majors = useMemo(
     () => majorsOf(cats, kind === 'saving' ? 'saving' : kind),

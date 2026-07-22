@@ -4,6 +4,8 @@ import { addDays } from 'date-fns'
 import { Card, Label, EmptyState, Field, inputCls, SaveButton } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { MoneySheet } from '../components/MoneySheet'
+import { TodoSheet } from './Todo'
+import { DiarySheet } from './Diary'
 import { DateStrip } from '../components/DateStrip'
 import { BookCover, DiaryPhoto } from '../components/CoverImg'
 import { useBooks, updateBookPage, addQuote } from '../lib/books'
@@ -215,7 +217,7 @@ function DayExpenseCard({ date, onOpen }: { date: string; onOpen: () => void }) 
 }
 
 // ---------------- 그날의 할일 카드 ----------------
-function DayTodoCard({ date }: { date: string }) {
+function DayTodoCard({ date, onOpen }: { date: string; onOpen: () => void }) {
   const invalidate = useInvalidate()
   const isToday = date === todayStr()
   const { data: todos } = useQuery({
@@ -242,20 +244,23 @@ function DayTodoCard({ date }: { date: string }) {
   const list = (todos ?? []).slice().sort(todoCompare)
   const allDone = (todos ?? []).length > 0 && (todos ?? []).every((t) => t.is_done)
   return (
-    <Card className="!p-3.5 h-[175px] flex flex-col overflow-hidden">
+    <Card onClick={onOpen} className="!p-3.5 h-[175px] flex flex-col overflow-hidden">
       <Label className="mb-2">
         {isToday ? '오늘 할일' : `${fmtDot(date)} 할일`}
         {allDone && isToday && <span className="ml-1 text-[#9AA05E]">· 다 했어요 🎉</span>}
       </Label>
       <div className="flex-1 overflow-y-auto no-scrollbar">
-        {!todos?.length && <div className="text-[11px] text-sub py-1">할일이 없어요</div>}
+        {!todos?.length && <div className="text-[11px] text-sub py-1">탭해서 추가하기</div>}
         {list.map((t) => (
           <div
             key={t.id}
             className={`rounded-xl px-[11px] py-[9px] mb-1.5 text-[11px] font-semibold leading-snug cursor-pointer transition-colors flex items-center gap-1 ${
               t.is_done ? 'bg-[#F1F1EF] text-[#C4C4C0] line-through font-medium' : 'bg-[#F6F6F3]'
             }`}
-            onClick={() => toggle(t)}
+            onClick={(e) => {
+              e.stopPropagation()
+              toggle(t)
+            }}
           >
             {t.template_id && <span className="text-[#9AA05E] text-[9px]">↻</span>}
             <span className="flex-1">{t.content}</span>
@@ -452,7 +457,7 @@ function MemoCard() {
 }
 
 // ---------------- 일기 카드 (오늘 = 가장 최신 일기, 과거 날짜 = 그 날짜 일기) ----------------
-function DayDiaryCard({ date }: { date: string }) {
+function DayDiaryCard({ date, onOpen }: { date: string; onOpen: () => void }) {
   const isToday = date === todayStr()
   const { data: diaries } = useQuery({
     queryKey: ['diaries', 'day', isToday ? 'latest' : date],
@@ -487,7 +492,7 @@ function DayDiaryCard({ date }: { date: string }) {
           ? '어제 일기'
           : `${fmtDot(latest.entry_date)} 일기`
   return (
-    <Card className="flex gap-3 items-center !p-3 h-[100px] overflow-hidden">
+    <Card onClick={onOpen} className="flex gap-3 items-center !p-3 h-[100px] overflow-hidden">
       {latest?.photo_url && (
         <DiaryPhoto path={latest.photo_url} thumb className="w-[72px] h-[72px] rounded-[14px] flex-none" />
       )}
@@ -522,6 +527,8 @@ function DayDiaryCard({ date }: { date: string }) {
 export default function HomePage() {
   const [selDate, setSelDate] = useState(todayStr())
   const [expenseOpen, setExpenseOpen] = useState(false)
+  const [todoOpen, setTodoOpen] = useState(false)
+  const [diaryOpen, setDiaryOpen] = useState(false)
   return (
     <div>
       <Greeting />
@@ -529,18 +536,20 @@ export default function HomePage() {
       <RandomQuote />
       <PendingRecurring />
       <div className="mb-3">
-        <DayDiaryCard date={selDate} />
+        <DayDiaryCard date={selDate} onOpen={() => setDiaryOpen(true)} />
       </div>
       <DateStrip selected={selDate} onSelect={setSelDate} />
       <div className="grid grid-cols-2 gap-3 mb-3">
         <DayExpenseCard date={selDate} onOpen={() => setExpenseOpen(true)} />
-        <DayTodoCard date={selDate} />
+        <DayTodoCard date={selDate} onOpen={() => setTodoOpen(true)} />
       </div>
       <div className="grid grid-cols-2 gap-3 mb-3">
         <ReadingCard />
         <MemoCard />
       </div>
-      <MoneySheet open={expenseOpen} onClose={() => setExpenseOpen(false)} />
+      <MoneySheet open={expenseOpen} onClose={() => setExpenseOpen(false)} initialDate={selDate} />
+      <TodoSheet open={todoOpen} onClose={() => setTodoOpen(false)} initialDate={selDate} />
+      <DiarySheet open={diaryOpen} onClose={() => setDiaryOpen(false)} initialDate={selDate} />
     </div>
   )
 }
