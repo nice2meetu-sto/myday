@@ -97,7 +97,7 @@ export default function TodoPage() {
   const userId = useUserId()
   const invalidate = useInvalidate()
   const [view, setView] = useState<'mx' | 'cal'>('mx')
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [sheetInit, setSheetInit] = useState<{ date?: string; quad?: Quadrant } | null>(null)
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [pick, setPick] = useState<PickState | null>(null)
   const [editTemplate, setEditTemplate] = useState<TodoTemplate | null>(null)
@@ -350,7 +350,9 @@ export default function TodoPage() {
               }`}
               onClick={(e) => {
                 if ((e.target as HTMLElement).closest('[data-tcard]')) return
-                onTargetTap({ type: 'quad', quad: q.key })
+                // 집어든 할일이 있으면 그 칸으로 이동, 없으면 그 구분으로 추가창 열기
+                if (onTargetTap({ type: 'quad', quad: q.key })) return
+                setSheetInit({ quad: q.key })
               }}
             >
               <header className="flex justify-between items-center mx-1 mt-0.5 mb-2">
@@ -512,7 +514,9 @@ export default function TodoPage() {
               }`}
               onClick={(e) => {
                 if ((e.target as HTMLElement).closest('[data-tcard]')) return
-                onTargetTap({ type: 'cell', date: d })
+                // 집어든 할일이 있으면 그 날짜로 이동, 없으면 그 날짜로 추가창 열기
+                if (onTargetTap({ type: 'cell', date: d })) return
+                setSheetInit({ date: d })
               }}
             >
               <div className="flex items-baseline justify-between mb-2">
@@ -546,7 +550,7 @@ export default function TodoPage() {
           <>
             <AddButton light icon="✎" onClick={() => nav('/todo/edit')} />
             <AddButton light icon="↻" onClick={() => setTemplatesOpen(true)} />
-            <AddButton onClick={() => setSheetOpen(true)} />
+            <AddButton onClick={() => setSheetInit({})} />
           </>
         }
       />
@@ -574,7 +578,12 @@ export default function TodoPage() {
         </div>
       )}
 
-      <TodoSheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <TodoSheet
+        open={!!sheetInit}
+        onClose={() => setSheetInit(null)}
+        initialDate={sheetInit?.date}
+        initialQuad={sheetInit?.quad}
+      />
       <TemplateListSheet
         open={templatesOpen}
         onClose={() => setTemplatesOpen(false)}
@@ -594,11 +603,13 @@ export function TodoSheet({
   onClose,
   edit,
   initialDate,
+  initialQuad,
 }: {
   open: boolean
   onClose: () => void
   edit?: Todo | null
   initialDate?: string
+  initialQuad?: Quadrant | null
 }) {
   const userId = useUserId()
   const invalidate = useInvalidate()
@@ -623,7 +634,7 @@ export function TodoSheet({
   if (open && !edit && loaded.current !== 'new') {
     loaded.current = 'new'
     setContent('')
-    setQuadrant(null)
+    setQuadrant(initialQuad ?? null)
     setDueDate(initialDate ?? '')
     setDueTime('')
     setRepeat(false)
