@@ -84,11 +84,14 @@ function Donut({
   const drillRows = useMemo(() => {
     if (!drill) return null
     const list = rows.filter((r) => (r.major_category_id ?? 'none') === drill)
-    const byMinor = new Map<string, { name: string; amount: number; items: MoneyEntry[] }>()
+    const byMinor = new Map<
+      string,
+      { id: string | null; name: string; amount: number; items: MoneyEntry[] }
+    >()
     list.forEach((r) => {
       const k = r.minor_category_id ?? 'none'
       const name = r.minor_category_id ? catName(cats, r.minor_category_id) : '기타'
-      const e = byMinor.get(k) ?? { name, amount: 0, items: [] }
+      const e = byMinor.get(k) ?? { id: r.minor_category_id, name, amount: 0, items: [] }
       e.amount += Number(r.amount)
       e.items.push(r)
       byMinor.set(k, e)
@@ -157,7 +160,10 @@ function Donut({
           {drillRows.map((m, i) => (
             <div key={i} className="border-b border-[#EEE] last:border-0 py-1">
               <div className="flex justify-between font-bold py-1">
-                <span>· {m.name}</span>
+                <span>
+                  · {catIcon(cats, m.id) && <span className="mr-0.5">{catIcon(cats, m.id)}</span>}
+                  {m.name}
+                </span>
                 <span className="tabular">{fmt(m.amount)}</span>
               </div>
               {m.items.map((it) => (
