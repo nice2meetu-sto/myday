@@ -569,21 +569,6 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
         </Card>
       </div>
 
-      {/* 카테고리별 그래프 — 카드 탭하면 소비 ↔ 수입 전환 */}
-      <Donut
-        key={catKind}
-        dayMode
-        title={`카테고리별 ${catKind === 'expense' ? '소비' : '수입'}`}
-        rows={catKind === 'expense' ? dayExp : dayInc}
-        kind={catKind}
-        onTap={() => setCatKind((k) => (k === 'expense' ? 'income' : 'expense'))}
-        titleRight={
-          <span className="text-[11px] font-bold text-sub">
-            {catKind === 'expense' ? '수입 보기 ›' : '‹ 소비 보기'}
-          </span>
-        }
-      />
-
       {/* 일별 소비 추이 — 1일~말일 가로 고정, 슬라이더 날짜까지 전진 */}
       <Card className="mb-2">
         <div className="flex items-center justify-between mb-2">
@@ -592,10 +577,10 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
             {anchor.getMonth() + 1}/{day}까지 {fmt(cumSum)}
           </b>
         </div>
-        <ResponsiveContainer width="100%" height={110}>
-          <ComposedChart data={trend} margin={{ top: 14, right: 18, bottom: 2, left: 18 }}>
+        <ResponsiveContainer width="100%" height={120}>
+          <ComposedChart data={trend} margin={{ top: 26, right: 20, bottom: 2, left: 20 }}>
             <XAxis dataKey="d" hide type="number" domain={[1, daysInMonth]} />
-            <YAxis hide domain={[0, 'dataMax']} />
+            <YAxis hide domain={[0, (dataMax: number) => (dataMax > 0 ? dataMax * 1.15 : 1)]} />
             <Line
               dataKey="amt"
               stroke="#C7CE9A"
@@ -624,6 +609,21 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
           </ComposedChart>
         </ResponsiveContainer>
       </Card>
+
+      {/* 카테고리별 그래프 — 카드 탭하면 소비 ↔ 수입 전환 */}
+      <Donut
+        key={catKind}
+        dayMode
+        title={`카테고리별 ${catKind === 'expense' ? '소비' : '수입'}`}
+        rows={catKind === 'expense' ? dayExp : dayInc}
+        kind={catKind}
+        onTap={() => setCatKind((k) => (k === 'expense' ? 'income' : 'expense'))}
+        titleRight={
+          <span className="text-[11px] font-bold text-sub">
+            {catKind === 'expense' ? '수입 보기 ›' : '‹ 소비 보기'}
+          </span>
+        }
+      />
     </>
   )
 }
