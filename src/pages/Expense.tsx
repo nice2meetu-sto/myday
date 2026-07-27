@@ -656,7 +656,7 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
           className="flex-none bg-white border border-black/10 rounded-xl px-2.5 py-2 text-[13px] font-bold tabular"
           onClick={() => setPickerOpen(true)}
         >
-          {anchor.getMonth() + 1}/{day} 📅
+          {anchor.getMonth() + 1}/{day}
         </button>
       </div>
       <DayPickerSheet
