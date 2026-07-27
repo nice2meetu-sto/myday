@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { PieChart, Pie, Cell, ComposedChart, Bar, Line, XAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { addMonths, addYears, format } from 'date-fns'
 import { Card, Label, StatNumber, SegmentedControl, AddButton, PageHead, PeriodNav, EmptyState, SaveButton, inputCls } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { MoneySheet } from '../components/MoneySheet'
 import { useCategories, catName, useInvalidate, useUserId } from '../lib/queries'
 import { useMoneyRange, useSummaryView, sumAmount, monthRange, yearRange } from '../lib/money'
-import { fmt, fmtWon, commaInput, parseAmount } from '../lib/format'
+import { fmt, fmtWon, commaInput, parseAmount, ymd, todayStr, localDateOf } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast } from '../stores/ui'
 import type { MoneyEntry, Saving } from '../types'
@@ -417,15 +417,125 @@ function SavingStatCard({
   )
 }
 
+// ---------------- 일별 보기 ----------------
+function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => void }) {
+  const daysInMonth = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate()
+  const now = new Date()
+  const isCurMonth =
+    anchor.getFullYear() === now.getFullYear() && anchor.getMonth() === now.getMonth()
+  const [day, setDay] = useState(isCurMonth ? now.getDate() : 1)
+  const monthKey = format(anchor, 'yyyy-MM')
+
+  // 월 바뀌면 이번달이면 오늘, 아니면 1일로
+  useEffect(() => {
+    setDay(isCurMonth ? now.getDate() : 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthKey])
+
+  const { from, to } = monthRange(anchor)
+  const { data: expenses } = useMoneyRange('expense', from, to)
+  const { data: incomes } = useMoneyRange('income', from, to)
+
+  const dateStr = ymd(new Date(anchor.getFullYear(), anchor.getMonth(), day))
+  const dayExp = ((expenses ?? []) as MoneyEntry[]).filter(
+    (r) => localDateOf(r.occurred_at) === dateStr,
+  )
+  const dayInc = ((incomes ?? []) as MoneyEntry[]).filter(
+    (r) => localDateOf(r.occurred_at) === dateStr,
+  )
+
+  // 일별 소비 추이: 1일~말일 고정 가로축, 지나간 날까지만 선이 전진
+  const trend = useMemo(() => {
+    const sums = new Map<string, number>()
+    ;((expenses ?? []) as MoneyEntry[]).forEach((r) => {
+      const d = localDateOf(r.occurred_at)
+      sums.set(d, (sums.get(d) ?? 0) + Number(r.amount))
+    })
+    const today = todayStr()
+    return Array.from({ length: daysInMonth }, (_, i) => {
+      const ds = ymd(new Date(anchor.getFullYear(), anchor.getMonth(), i + 1))
+      return { d: i + 1, amt: ds > today ? null : (sums.get(ds) ?? 0) }
+    })
+  }, [expenses, daysInMonth, anchor])
+
+  return (
+    <>
+      {/* 년월 선택 + 일 슬라이더 */}
+      <div className="flex items-center gap-3 mb-3.5 px-0.5">
+        <div className="relative flex-none">
+          <input
+            type="month"
+            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+            value={monthKey}
+            onChange={(e) => {
+              const [y, m] = e.target.value.split('-').map(Number)
+              if (y && m) setAnchor(new Date(y, m - 1, 1))
+            }}
+          />
+          <span className="inline-block bg-white border border-black/10 rounded-xl px-3 py-2 text-[13px] font-bold pointer-events-none">
+            {anchor.getFullYear()}년 {anchor.getMonth() + 1}월 ▾
+          </span>
+        </div>
+        <input
+          type="range"
+          min={1}
+          max={daysInMonth}
+          value={day}
+          className="flex-1 accent-acc"
+          onChange={(e) => setDay(parseInt(e.target.value, 10))}
+        />
+        <b className="text-[13px] tabular flex-none w-9 text-right">
+          {anchor.getMonth() + 1}/{day}
+        </b>
+      </div>
+
+      {/* 그날 소비/수입 (지난달 비교 없음) */}
+      <div className="grid grid-cols-2 gap-2 mb-2">
+        <Card>
+          <Label>소비</Label>
+          <StatNumber size="sm" value={sumAmount(dayExp)} />
+        </Card>
+        <Card>
+          <Label>수입</Label>
+          <StatNumber size="sm" value={sumAmount(dayInc)} />
+        </Card>
+      </div>
+
+      <Donut title="카테고리별 소비" rows={dayExp} kind="expense" />
+      <Donut title="카테고리별 수입" rows={dayInc} kind="income" />
+
+      {/* 일별 소비 추이 — 1일~말일 가로 고정, 최고 소비가 최대 높이 */}
+      <Card className="mb-2">
+        <Label className="mb-2">일별 소비 추이</Label>
+        <ResponsiveContainer width="100%" height={110}>
+          <ComposedChart data={trend} margin={{ top: 8, right: 4, bottom: 2, left: 4 }}>
+            <XAxis dataKey="d" hide type="number" domain={[1, daysInMonth]} />
+            <YAxis hide domain={[0, 'dataMax']} />
+            <Line
+              dataKey="amt"
+              stroke="#BAAF9D"
+              strokeWidth={2}
+              dot={false}
+              isAnimationActive={false}
+              connectNulls={false}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </Card>
+    </>
+  )
+}
+
 export default function ExpensePage() {
   const nav = useNavigate()
-  const [mode, setMode] = useState<'month' | 'year'>('month')
+  const [mode, setMode] = useState<'day' | 'month' | 'year'>('month')
   const [anchor, setAnchor] = useState(() => new Date())
   const [sheetOpen, setSheetOpen] = useState(false)
 
-  // 탭바에서 소비 탭 재탭 → 월/연 전환
+  // 탭바에서 소비 탭 재탭 → 일/월/연 순환
   useEffect(() => {
-    const onRetap = () => setMode((m) => (m === 'month' ? 'year' : 'month'))
+    const onRetap = () =>
+      setMode((m) => (m === 'day' ? 'month' : m === 'month' ? 'year' : 'day'))
     window.addEventListener('tab-retap:/expense', onRetap)
     return () => window.removeEventListener('tab-retap:/expense', onRetap)
   }, [])
@@ -464,36 +574,43 @@ export default function ExpensePage() {
       <SegmentedControl
         className="mb-3.5"
         options={[
+          { value: 'day', label: '일' },
           { value: 'month', label: '월' },
           { value: 'year', label: '연' },
         ]}
         value={mode}
         onChange={setMode}
       />
-      <PeriodNav label={label} onPrev={() => move(-1)} onNext={() => move(1)} />
-      <div className="grid grid-cols-2 gap-2 mb-2">
-        <Card>
-          <Label>소비</Label>
-          <StatNumber size="sm" value={sumAmount(expenses)} />
-          <DeltaLine cur={sumAmount(expenses)} prev={sumAmount(prevExpenses)} label={unit} />
-        </Card>
-        <Card>
-          <Label>수입</Label>
-          <StatNumber size="sm" value={sumAmount(incomes)} />
-          <DeltaLine cur={sumAmount(incomes)} prev={sumAmount(prevIncomes)} label={unit} />
-        </Card>
-      </div>
-      {mode === 'month' && <BudgetCard anchor={anchor} spent={sumAmount(expenses)} />}
-      <Donut title="카테고리별 소비" rows={(expenses ?? []) as MoneyEntry[]} kind="expense" />
-      <Donut title="카테고리별 수입" rows={(incomes ?? []) as MoneyEntry[]} kind="income" />
-      <SavingStatCard
-        savings={savings as Saving[] | undefined}
-        prevSavings={prevSavings as Saving[] | undefined}
-        unit={unit}
-        mode={mode}
-      />
-      <TrendChart mode={mode} anchor={anchor} />
-      <SavingsView anchor={anchor} />
+      {mode === 'day' ? (
+        <DayView anchor={anchor} setAnchor={setAnchor} />
+      ) : (
+        <>
+          <PeriodNav label={label} onPrev={() => move(-1)} onNext={() => move(1)} />
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <Card>
+              <Label>소비</Label>
+              <StatNumber size="sm" value={sumAmount(expenses)} />
+              <DeltaLine cur={sumAmount(expenses)} prev={sumAmount(prevExpenses)} label={unit} />
+            </Card>
+            <Card>
+              <Label>수입</Label>
+              <StatNumber size="sm" value={sumAmount(incomes)} />
+              <DeltaLine cur={sumAmount(incomes)} prev={sumAmount(prevIncomes)} label={unit} />
+            </Card>
+          </div>
+          {mode === 'month' && <BudgetCard anchor={anchor} spent={sumAmount(expenses)} />}
+          <Donut title="카테고리별 소비" rows={(expenses ?? []) as MoneyEntry[]} kind="expense" />
+          <Donut title="카테고리별 수입" rows={(incomes ?? []) as MoneyEntry[]} kind="income" />
+          <SavingStatCard
+            savings={savings as Saving[] | undefined}
+            prevSavings={prevSavings as Saving[] | undefined}
+            unit={unit}
+            mode={mode}
+          />
+          <TrendChart mode={mode} anchor={anchor} />
+          <SavingsView anchor={anchor} />
+        </>
+      )}
       <MoneySheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
     </div>
   )
