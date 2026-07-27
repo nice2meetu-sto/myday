@@ -638,7 +638,7 @@ export default function HobbyPage() {
   }, [])
   return (
     <div>
-      <PageHead title="취미" right={<AddButton onClick={() => setAddOpen(true)} />} />
+      <PageHead title="독서" right={<AddButton onClick={() => setAddOpen(true)} />} />
       <SegmentedControl
         className="mb-3.5"
         options={[
