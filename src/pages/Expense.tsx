@@ -696,8 +696,8 @@ function DayView({
             {anchor.getMonth() + 1}/{day}까지 {fmt(cumSum)}
           </b>
         </div>
-        <ResponsiveContainer width="100%" height={112}>
-          <ComposedChart data={trend} margin={{ top: 5, right: 6, bottom: 0, left: 6 }}>
+        <ResponsiveContainer width="100%" height={122}>
+          <ComposedChart data={trend} margin={{ top: 5, right: 6, bottom: 6, left: 6 }}>
             {/* 하단 일자 눈금 (1~말일, 작은 회색 글씨) */}
             <XAxis
               dataKey="d"
@@ -708,8 +708,8 @@ function DayView({
               tick={{ fontSize: 8, fill: '#B3AFA3', fontWeight: 600 }}
               axisLine={false}
               tickLine={false}
-              height={12}
-              tickMargin={2}
+              height={16}
+              tickMargin={3}
             />
             {/* 최대점 위 라벨(글자+점)이 플롯 안에서 잘리지 않을 만큼만 헤드룸 확보 */}
             <YAxis hide domain={[0, (dataMax: number) => (dataMax > 0 ? dataMax * 1.15 : 1)]} />
