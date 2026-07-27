@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { PieChart, Pie, Cell, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot } from 'recharts'
 import { addMonths, addYears, format } from 'date-fns'
 import { Card, Label, StatNumber, SegmentedControl, AddButton, PageHead, PeriodNav, EmptyState, SaveButton, inputCls } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
@@ -39,10 +39,14 @@ function Donut({
   title,
   rows,
   kind,
+  onTap,
+  titleRight,
 }: {
   title: string
   rows: MoneyEntry[]
   kind: 'expense' | 'income'
+  onTap?: () => void
+  titleRight?: ReactNode
 }) {
   const { data: cats } = useCategories()
   const [drill, setDrill] = useState<string | null>(null)
@@ -84,15 +88,23 @@ function Donut({
 
   if (!byMajor.items.length)
     return (
-      <Card className="mb-2">
-        <Label className="mb-2">{title}</Label>
+      <Card className={`mb-2 ${onTap ? 'cursor-pointer' : ''}`} onClick={onTap}>
+        <div className="flex items-center justify-between mb-2">
+          <Label>{title}</Label>
+          {titleRight}
+        </div>
         <EmptyState>아직 내역이 없어요</EmptyState>
       </Card>
     )
 
   return (
-    <Card className="mb-2">
-      <Label className="mb-3.5">{title}</Label>
+    <Card className={`mb-2 ${onTap ? 'cursor-pointer' : ''}`} onClick={onTap}>
+      <div className="flex items-center justify-between mb-3.5">
+        <Label>{title}</Label>
+        {titleRight}
+      </div>
+      {/* 그래프·범례·드릴 영역은 카드 전환 탭과 분리 */}
+      <div onClick={onTap ? (e) => e.stopPropagation() : undefined}>
       <div className="flex items-center gap-4">
         <PieChart width={110} height={110}>
           <Pie
@@ -150,6 +162,7 @@ function Donut({
           ))}
         </div>
       )}
+      </div>
     </Card>
   )
 }
@@ -424,6 +437,7 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
   const isCurMonth =
     anchor.getFullYear() === now.getFullYear() && anchor.getMonth() === now.getMonth()
   const [day, setDay] = useState(isCurMonth ? now.getDate() : 1)
+  const [catKind, setCatKind] = useState<'expense' | 'income'>('expense')
   const monthKey = format(anchor, 'yyyy-MM')
 
   // 월 바뀌면 이번달이면 오늘, 아니면 1일로
@@ -444,19 +458,34 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
     (r) => localDateOf(r.occurred_at) === dateStr,
   )
 
-  // 일별 소비 추이: 1일~말일 고정 가로축, 지나간 날까지만 선이 전진
+  // 일별 소비 추이: 1일~말일 고정 가로축, 슬라이더로 고른 날까지만 선이 전진
   const trend = useMemo(() => {
     const sums = new Map<string, number>()
     ;((expenses ?? []) as MoneyEntry[]).forEach((r) => {
       const d = localDateOf(r.occurred_at)
       sums.set(d, (sums.get(d) ?? 0) + Number(r.amount))
     })
-    const today = todayStr()
     return Array.from({ length: daysInMonth }, (_, i) => {
       const ds = ymd(new Date(anchor.getFullYear(), anchor.getMonth(), i + 1))
-      return { d: i + 1, amt: ds > today ? null : (sums.get(ds) ?? 0) }
+      return { d: i + 1, amt: i + 1 > day ? null : (sums.get(ds) ?? 0) }
     })
-  }, [expenses, daysInMonth, anchor])
+  }, [expenses, daysInMonth, anchor, day])
+
+  // 그린 구간(1일~선택일)의 최대 소비일 + 그날까지 누적 소비
+  const { maxDay, maxAmt, cumSum } = useMemo(() => {
+    let md = 0
+    let ma = 0
+    let cs = 0
+    trend.forEach((t) => {
+      if (t.amt == null) return
+      cs += t.amt
+      if (t.amt > ma) {
+        ma = t.amt
+        md = t.d
+      }
+    })
+    return { maxDay: md, maxAmt: ma, cumSum: cs }
+  }, [trend])
 
   return (
     <>
@@ -501,24 +530,57 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
         </Card>
       </div>
 
-      <Donut title="카테고리별 소비" rows={dayExp} kind="expense" />
-      <Donut title="카테고리별 수입" rows={dayInc} kind="income" />
+      {/* 카테고리별 그래프 — 카드 탭하면 소비 ↔ 수입 전환 */}
+      <Donut
+        key={catKind}
+        title={`카테고리별 ${catKind === 'expense' ? '소비' : '수입'}`}
+        rows={catKind === 'expense' ? dayExp : dayInc}
+        kind={catKind}
+        onTap={() => setCatKind((k) => (k === 'expense' ? 'income' : 'expense'))}
+        titleRight={
+          <span className="text-[11px] font-bold text-sub">
+            {catKind === 'expense' ? '수입 보기 ›' : '‹ 소비 보기'}
+          </span>
+        }
+      />
 
-      {/* 일별 소비 추이 — 1일~말일 가로 고정, 최고 소비가 최대 높이 */}
+      {/* 일별 소비 추이 — 1일~말일 가로 고정, 슬라이더 날짜까지 전진 */}
       <Card className="mb-2">
-        <Label className="mb-2">일별 소비 추이</Label>
+        <div className="flex items-center justify-between mb-2">
+          <Label>일별 소비 추이</Label>
+          <b className="text-[12px] tabular">
+            {anchor.getMonth() + 1}/{day}까지 {fmt(cumSum)}
+          </b>
+        </div>
         <ResponsiveContainer width="100%" height={110}>
-          <ComposedChart data={trend} margin={{ top: 8, right: 4, bottom: 2, left: 4 }}>
+          <ComposedChart data={trend} margin={{ top: 14, right: 18, bottom: 2, left: 18 }}>
             <XAxis dataKey="d" hide type="number" domain={[1, daysInMonth]} />
             <YAxis hide domain={[0, 'dataMax']} />
             <Line
               dataKey="amt"
-              stroke="#BAAF9D"
+              stroke="#C7CE9A"
               strokeWidth={2}
               dot={false}
               isAnimationActive={false}
               connectNulls={false}
             />
+            {maxAmt > 0 && (
+              <ReferenceDot
+                x={maxDay}
+                y={maxAmt}
+                r={3}
+                fill="#9AA05E"
+                stroke="#fff"
+                strokeWidth={1}
+                label={{
+                  value: fmt(maxAmt),
+                  position: 'top',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  fill: '#8A8266',
+                }}
+              />
+            )}
           </ComposedChart>
         </ResponsiveContainer>
       </Card>
