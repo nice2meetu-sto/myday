@@ -277,7 +277,7 @@ function DayTodoCard({ date, onOpen }: { date: string; onOpen: () => void }) {
 }
 
 // ---------------- 읽는 중 책 카드 + 시트 ----------------
-function ReadingCard() {
+function ReadingCard({ date }: { date: string }) {
   const userId = useUserId()
   const invalidate = useInvalidate()
   const { data: books } = useBooks()
@@ -354,7 +354,8 @@ function ReadingCard() {
         className="h-[130px] overflow-hidden !p-3.5"
         onClick={() => {
           setPageInput(String(book.current_page))
-          setLogDate(todayStr())
+          // 선택된 날짜 칩으로 자동 입력 (미래면 오늘로 제한)
+          setLogDate(date > todayStr() ? todayStr() : date)
           setOpen(true)
         }}
       >
@@ -646,7 +647,7 @@ export default function HomePage() {
         <DayTodoCard date={selDate} onOpen={() => setTodoOpen(true)} />
       </div>
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <ReadingCard />
+        <ReadingCard date={selDate} />
         <MemoCard />
       </div>
       <SpendingGrid />
