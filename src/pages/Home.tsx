@@ -285,6 +285,7 @@ function ReadingCard() {
   const [pageInput, setPageInput] = useState('')
   const [quoteInput, setQuoteInput] = useState('')
   const [quotePage, setQuotePage] = useState('')
+  const [logDate, setLogDate] = useState(todayStr())
 
   const { data: lastLog } = useQuery({
     queryKey: ['reading_logs', 'latest'],
@@ -322,13 +323,14 @@ function ReadingCard() {
   const save = async () => {
     const p = parseInt(pageInput.replace(/[^0-9]/g, ''), 10)
     let saved = false
+    const pastDate = logDate !== todayStr() ? logDate : undefined
     try {
       if (p && p !== book.current_page) {
-        await updateBookPage(userId, book, p)
+        await updateBookPage(userId, book, p, logDate)
         saved = true
       }
       if (quoteInput.trim()) {
-        await addQuote(userId, book.id, quoteInput.trim(), parseInt(quotePage, 10) || null)
+        await addQuote(userId, book.id, quoteInput.trim(), parseInt(quotePage, 10) || null, pastDate)
         saved = true
       }
     } catch (e) {
@@ -352,6 +354,7 @@ function ReadingCard() {
         className="h-[130px] overflow-hidden !p-3.5"
         onClick={() => {
           setPageInput(String(book.current_page))
+          setLogDate(todayStr())
           setOpen(true)
         }}
       >
@@ -371,14 +374,25 @@ function ReadingCard() {
         </div>
       </Card>
       <BottomSheet open={open} onClose={() => setOpen(false)} title={book.title}>
-        <Field label="읽은 쪽수">
-          <input
-            className={inputCls}
-            inputMode="numeric"
-            value={pageInput}
-            onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ''))}
-          />
-        </Field>
+        <div className="flex gap-2">
+          <Field label="날짜">
+            <input
+              type="date"
+              className={inputCls}
+              value={logDate}
+              max={todayStr()}
+              onChange={(e) => setLogDate(e.target.value)}
+            />
+          </Field>
+          <Field label="읽은 쪽수">
+            <input
+              className={inputCls}
+              inputMode="numeric"
+              value={pageInput}
+              onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ''))}
+            />
+          </Field>
+        </div>
         <Field label="필사 문장 (선택)">
           <textarea
             className={inputCls}

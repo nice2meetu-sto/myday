@@ -51,34 +51,50 @@ export function useQuotes(bookId?: string, limit?: number) {
  * 페이지 갱신 공용 헬퍼 — books.current_page 갱신 + reading_logs 삽입.
  * 홈 카드 시트와 책 상세 슬라이더 둘 다 반드시 이걸 사용해야 통계가 정확함.
  */
-export async function updateBookPage(userId: string, book: Book, newPage: number) {
+export async function updateBookPage(
+  userId: string,
+  book: Book,
+  newPage: number,
+  logDate?: string,
+) {
+  const date = logDate ?? todayStr()
   const pagesRead = Math.max(0, newPage - book.current_page)
   const patch: Record<string, unknown> = {
-    current_page: newPage,
     updated_at: new Date().toISOString(),
   }
+  // 과거 날짜 기록 시 현재 쪽수를 뒤로 되돌리지 않도록 (앞으로 나아갈 때만 갱신)
+  if (newPage > book.current_page) patch.current_page = newPage
   if (book.status === 'want') {
     patch.status = 'reading'
-    patch.started_at = todayStr()
+    patch.started_at = date
   }
   const r1 = await sb().from('books').update(patch).eq('id', book.id)
   if (r1.error) throw r1.error
   const r2 = await sb().from('reading_logs').insert({
     user_id: userId,
     book_id: book.id,
-    log_date: todayStr(),
+    log_date: date,
     end_page: newPage,
     pages_read: pagesRead,
   })
   if (r2.error) throw r2.error
 }
 
-export async function addQuote(userId: string, bookId: string, content: string, page: number | null) {
-  const { error } = await sb().from('book_quotes').insert({
+export async function addQuote(
+  userId: string,
+  bookId: string,
+  content: string,
+  page: number | null,
+  createdAt?: string,
+) {
+  const row: Record<string, unknown> = {
     user_id: userId,
     book_id: bookId,
     content,
     page,
-  })
+  }
+  // 과거 날짜를 고른 경우 created_at을 그 날 정오로 (오늘이면 기본값 now 유지)
+  if (createdAt) row.created_at = `${createdAt}T12:00:00`
+  const { error } = await sb().from('book_quotes').insert(row)
   if (error) throw error
 }
