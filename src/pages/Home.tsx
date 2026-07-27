@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { addDays } from 'date-fns'
 import { Card, Label, EmptyState, Field, inputCls, SaveButton } from '../components/common'
@@ -553,6 +554,7 @@ function spendLevel(amt: number): number {
 }
 
 function SpendingGrid() {
+  const nav = useNavigate()
   const today = todayStr()
   // 이번 주 일요일 → 거기서 (SPEND_WEEKS-1)주 전 일요일이 그리드 시작
   const todayD = new Date(today + 'T00:00:00')
@@ -614,9 +616,12 @@ function SpendingGrid() {
                       : {
                           background: SPEND_COLORS[lvl],
                           border: '1px solid rgba(0,0,0,0.06)',
+                          cursor: 'pointer',
                         }
                   }
                   title={future ? '' : `${fmtDot(dateStr)} ${fmt(amt)}원`}
+                  // 칸 탭 → 그 일자의 소비 [일] 탭으로 이동
+                  onClick={future ? undefined : () => nav('/expense', { state: { date: dateStr } })}
                 />
               )
             })}

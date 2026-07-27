@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { PieChart, Pie, Cell, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot } from 'recharts'
 import { addMonths, addYears, format } from 'date-fns'
@@ -576,9 +576,15 @@ function DayView({
   const [pickerOpen, setPickerOpen] = useState(false)
   const monthKey = format(anchor, 'yyyy-MM')
   const skipReset = useRef(false)
+  const firstRun = useRef(true)
 
-  // 월 바뀌면 이번달이면 오늘, 아니면 1일로 (달력에서 직접 고른 경우는 제외)
+  // 월 바뀌면 이번달이면 오늘, 아니면 1일로
+  // (첫 진입·달력에서 직접 고른 경우는 넘어온 일자를 유지)
   useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false
+      return
+    }
     if (skipReset.current) {
       skipReset.current = false
       return
@@ -767,9 +773,14 @@ function DayView({
 
 export default function ExpensePage() {
   const nav = useNavigate()
+  // 홈 소비 그리드 등에서 특정 일자로 진입한 경우
+  const location = useLocation()
+  const navDate = (location.state as { date?: string } | null)?.date
+  const navD = navDate ? new Date(navDate + 'T00:00:00') : null
+
   const [mode, setMode] = useState<'day' | 'month' | 'year'>('day')
-  const [anchor, setAnchor] = useState(() => new Date())
-  const [day, setDay] = useState(() => new Date().getDate())
+  const [anchor, setAnchor] = useState(() => navD ?? new Date())
+  const [day, setDay] = useState(() => (navD ?? new Date()).getDate())
   const [sheetOpen, setSheetOpen] = useState(false)
 
   // 탭바에서 소비 탭 재탭 → 일/월/연 순환
