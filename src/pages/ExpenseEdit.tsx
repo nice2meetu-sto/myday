@@ -13,7 +13,10 @@ import { toast, toastError } from '../stores/ui'
 import type { Category, MoneyKind, MoneyEntry, PaymentMethod, RecurringRule, Saving } from '../types'
 
 const TABLE: Record<MoneyKind, string> = { expense: 'expenses', income: 'incomes', saving: 'savings' }
-const PALETTE = ['#C7976F', '#FFDE70', '#A3C4EB', '#D0BC98', '#C7CE9A', '#CFE0D8', '#E1E5C7', '#B44B28']
+const PALETTE = [
+  '#C7976F', '#FFDE70', '#A3C4EB', '#D0BC98', '#C7CE9A', '#CFE0D8', '#E1E5C7', '#B44B28',
+  '#D3968C', '#FCE6B7', '#d1cdc6', '#364c84', '#cbceea', '#ffb98d', '#c4c3e3', '#504e76',
+]
 
 // ---------------- 데이터 수정 ----------------
 function DataEdit() {
