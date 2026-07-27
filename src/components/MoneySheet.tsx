@@ -362,14 +362,20 @@ export function MoneySheet({
         </div>
       )}
 
-      <SaveButton onClick={save} />
-      {isEdit && (
-        <button
-          className="w-full border-0 bg-transparent text-warn text-[12px] font-bold mt-3"
-          onClick={remove}
-        >
-          삭제
-        </button>
+      {isEdit ? (
+        <div className="flex gap-2">
+          <button
+            className="flex-1 border-0 rounded-[14px] py-[13px] font-bold text-[13px] bg-[#F2F2EF] text-warn"
+            onClick={remove}
+          >
+            삭제
+          </button>
+          <div className="flex-1">
+            <SaveButton onClick={save} />
+          </div>
+        </div>
+      ) : (
+        <SaveButton onClick={save} />
       )}
     </BottomSheet>
   )

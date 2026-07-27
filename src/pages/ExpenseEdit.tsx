@@ -5,9 +5,9 @@ import { addDays, format } from 'date-fns'
 import { Card, Label, SegmentedControl, AddButton, EmptyState, Field, inputCls, SaveButton, ChipRow } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { MoneySheet, MoneyEditTarget } from '../components/MoneySheet'
-import { useCategories, usePaymentMethods, catName, majorsOf, minorsOf, useInvalidate, useUserId } from '../lib/queries'
+import { useCategories, usePaymentMethods, catName, catIcon, majorsOf, minorsOf, useInvalidate, useUserId } from '../lib/queries'
 import { nextOccurrence, ensureRecurrences } from '../lib/recurrence'
-import { fmt, fmtDateKo, ymd, todayStr, commaInput, parseAmount, dayStartISO, nextDayStartISO, localDateOf } from '../lib/format'
+import { fmt, fmtDateKo, fmtSlash, fmtDot, ymd, todayStr, commaInput, parseAmount, dayStartISO, nextDayStartISO, localDateOf } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Category, MoneyKind, MoneyEntry, PaymentMethod, RecurringRule, Saving } from '../types'
@@ -22,6 +22,7 @@ function DataEdit() {
   const [to, setTo] = useState(todayStr())
   const [kind, setKind] = useState<MoneyKind>('expense')
   const [catFilter, setCatFilter] = useState<Set<string>>(new Set())
+  const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<MoneyEditTarget | null>(null)
 
   const { data: rows } = useQuery({
@@ -42,10 +43,21 @@ function DataEdit() {
   })
 
   const majors = majorsOf(cats, kind, true)
+  const q = search.trim()
   const filtered = (rows ?? []).filter((r) => {
-    if (!catFilter.size) return true
-    const major = kind === 'saving' ? (r as Saving).category_id : (r as MoneyEntry).major_category_id
-    return major ? catFilter.has(major) : false
+    if (catFilter.size) {
+      const major =
+        kind === 'saving' ? (r as Saving).category_id : (r as MoneyEntry).major_category_id
+      if (!major || !catFilter.has(major)) return false
+    }
+    if (!q) return true
+    // 내용 · 금액 · 일자(하루)로 검색
+    const d = localDateOf(r.occurred_at)
+    const numQ = q.replace(/[^0-9]/g, '')
+    if ((r.memo ?? '').includes(q)) return true
+    if (numQ && (String(Math.trunc(Number(r.amount))).includes(numQ) || fmt(Number(r.amount)).includes(q)))
+      return true
+    return d.includes(q) || fmtSlash(d).includes(q) || fmtDot(d).includes(q)
   })
 
   const grouped = useMemo(() => {
@@ -95,6 +107,12 @@ function DataEdit() {
             </span>
           ))}
         </div>
+        <input
+          className="w-full border border-black/10 rounded-xl px-3.5 py-[10px] font-semibold text-[13px] outline-none bg-white mt-3 placeholder:text-[#B8B8B4]"
+          placeholder="🔍 내용 · 금액 · 일자 검색 (예: 커피, 2500, 7/15)"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </Card>
       {!grouped.length && <EmptyState>해당 기간 내역이 없어요</EmptyState>}
       {grouped.map(([date, items]) => (
@@ -109,6 +127,14 @@ function DataEdit() {
               >
                 <div>
                   <div className="font-semibold">
+                    {(() => {
+                      const icon =
+                        kind === 'saving'
+                          ? catIcon(cats, (r as Saving).category_id)
+                          : catIcon(cats, (r as MoneyEntry).major_category_id) ||
+                            catIcon(cats, (r as MoneyEntry).minor_category_id)
+                      return icon ? <span className="mr-1">{icon}</span> : null
+                    })()}
                     {r.memo ||
                       (kind === 'saving'
                         ? catName(cats, (r as Saving).category_id)
