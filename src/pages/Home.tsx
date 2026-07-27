@@ -11,7 +11,7 @@ import { BookCover, DiaryPhoto } from '../components/CoverImg'
 import { useBooks, updateBookPage, addQuote } from '../lib/books'
 import { pendingConfirmations } from '../lib/recurrence'
 import { useInvalidate, useUserId, useCategories, catName, catIcon } from '../lib/queries'
-import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, dayStartISO, nextDayStartISO, todoCompare } from '../lib/format'
+import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, dayStartISO, nextDayStartISO, localDateOf, todoCompare } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, Diary, MoneyEntry, Todo } from '../types'
@@ -524,6 +524,94 @@ function DayDiaryCard({ date, onOpen }: { date: string; onOpen: () => void }) {
   )
 }
 
+// ---------------- 소비 현황 그리드 (일별 소비 히트맵) ----------------
+const SPEND_WEEKS = 18
+// 0원(흰색) → 진한 초록. 6단계
+const SPEND_COLORS = ['#FFFFFF', '#EAF4D9', '#CDE7A0', '#A0D162', '#66AB3A', '#3B7D1E']
+function spendLevel(amt: number): number {
+  if (amt <= 0) return 0
+  if (amt <= 20000) return 1 // ~2만원
+  if (amt <= 50000) return 2 // ~5만원
+  if (amt <= 80000) return 3 // ~8만원
+  if (amt <= 100000) return 4 // ~10만원
+  return 5 // 10만원 초과
+}
+
+function SpendingGrid() {
+  const today = todayStr()
+  // 이번 주 일요일 → 거기서 (SPEND_WEEKS-1)주 전 일요일이 그리드 시작
+  const todayD = new Date(today + 'T00:00:00')
+  const thisSunday = addDays(todayD, -todayD.getDay())
+  const gridStart = addDays(thisSunday, -(SPEND_WEEKS - 1) * 7)
+  const startStr = ymd(gridStart)
+
+  const { data: sums } = useQuery({
+    queryKey: ['money', 'grid', startStr],
+    queryFn: async () => {
+      const { data, error } = await sb()
+        .from('expenses')
+        .select('amount, occurred_at')
+        .eq('is_skipped', false)
+        .gte('occurred_at', dayStartISO(startStr))
+        .lt('occurred_at', nextDayStartISO(today))
+      if (error) throw error
+      const map = new Map<string, number>()
+      ;(data as { amount: number; occurred_at: string }[]).forEach((r) => {
+        const d = localDateOf(r.occurred_at)
+        map.set(d, (map.get(d) ?? 0) + Number(r.amount))
+      })
+      return map
+    },
+  })
+
+  return (
+    <Card className="!p-3.5 mb-3">
+      <div className="flex items-center justify-between">
+        <Label>소비 현황</Label>
+        <div className="flex items-center gap-[3px] text-[9px] text-sub font-bold">
+          <span className="mr-0.5">적음</span>
+          {SPEND_COLORS.map((c, i) => (
+            <i
+              key={i}
+              className="w-2.5 h-2.5 rounded-[3px] border border-black/[0.06]"
+              style={{ background: c }}
+            />
+          ))}
+          <span className="ml-0.5">많음</span>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-col gap-[3px]">
+        {Array.from({ length: 7 }).map((_, dow) => (
+          <div key={dow} className="flex gap-[3px]">
+            {Array.from({ length: SPEND_WEEKS }).map((_, w) => {
+              const date = addDays(gridStart, w * 7 + dow)
+              const dateStr = ymd(date)
+              const future = dateStr > today
+              const amt = sums?.get(dateStr) ?? 0
+              const lvl = spendLevel(amt)
+              return (
+                <div
+                  key={w}
+                  className="flex-1 aspect-square rounded-[3px]"
+                  style={
+                    future
+                      ? { visibility: 'hidden' }
+                      : {
+                          background: SPEND_COLORS[lvl],
+                          border: '1px solid rgba(0,0,0,0.06)',
+                        }
+                  }
+                  title={future ? '' : `${fmtDot(dateStr)} ${fmt(amt)}원`}
+                />
+              )
+            })}
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 export default function HomePage() {
   const [selDate, setSelDate] = useState(todayStr())
   const [expenseOpen, setExpenseOpen] = useState(false)
@@ -547,6 +635,7 @@ export default function HomePage() {
         <ReadingCard />
         <MemoCard />
       </div>
+      <SpendingGrid />
       <MoneySheet open={expenseOpen} onClose={() => setExpenseOpen(false)} initialDate={selDate} />
       <TodoSheet open={todoOpen} onClose={() => setTodoOpen(false)} initialDate={selDate} />
       <DiarySheet open={diaryOpen} onClose={() => setDiaryOpen(false)} initialDate={selDate} />

@@ -151,9 +151,16 @@ export function DiarySheet({
 }
 
 // ---------------- 월별 사진 달력 ----------------
-function DiaryCalendar({ onOpen }: { onOpen: (d: Diary) => void }) {
+function DiaryCalendar({
+  onOpen,
+  selDay,
+  onSelDay,
+}: {
+  onOpen: (d: Diary) => void
+  selDay: string | null
+  onSelDay: (d: string | null) => void
+}) {
   const [anchor, setAnchor] = useState(() => new Date())
-  const [selDay, setSelDay] = useState<string | null>(null)
   const from = ymd(startOfMonth(anchor))
   const to = ymd(endOfMonth(anchor))
   const { data: monthDiaries } = useQuery({
@@ -188,11 +195,11 @@ function DiaryCalendar({ onOpen }: { onOpen: (d: Diary) => void }) {
         label={format(anchor, 'yyyy년 M월')}
         onPrev={() => {
           setAnchor(addMonths(anchor, -1))
-          setSelDay(null)
+          onSelDay(null)
         }}
         onNext={() => {
           setAnchor(addMonths(anchor, 1))
-          setSelDay(null)
+          onSelDay(null)
         }}
       />
       <div className="grid grid-cols-7 gap-0.5 mb-1.5">
@@ -217,7 +224,7 @@ function DiaryCalendar({ onOpen }: { onOpen: (d: Diary) => void }) {
               className={`aspect-square relative rounded-[9px] overflow-hidden cursor-pointer flex items-center justify-center text-[11px] font-semibold ${
                 selDay === dateStr ? 'ring-2 ring-acc' : ''
               }`}
-              onClick={() => setSelDay(selDay === dateStr ? null : dateStr)}
+              onClick={() => onSelDay(selDay === dateStr ? null : dateStr)}
             >
               {withPhoto ? (
                 <>
@@ -285,6 +292,7 @@ export default function DiaryPage() {
   const { data: diaries } = useDiaries(limit)
   const invalidate = useInvalidate()
   const [writing, setWriting] = useState(false)
+  const [selDay, setSelDay] = useState<string | null>(null)
   const [detail, setDetail] = useState<Diary | null>(null)
   const [editing, setEditing] = useState<Diary | null>(null)
 
@@ -322,7 +330,9 @@ export default function DiaryPage() {
         onChange={(e) => setSearch(e.target.value)}
       />
       {/* 검색 중에는 달력 숨김, 평소에는 달력만 (일자 탭 → 그날 일기) */}
-      {!searching && <DiaryCalendar onOpen={(d) => setDetail(d)} />}
+      {!searching && (
+        <DiaryCalendar onOpen={(d) => setDetail(d)} selDay={selDay} onSelDay={setSelDay} />
+      )}
       {searching && !grouped.length && <EmptyState>검색 결과가 없어요</EmptyState>}
       {grouped.map(([date, items]) => (
         <div key={date}>
@@ -407,7 +417,7 @@ export default function DiaryPage() {
         </div>
       </BottomSheet>
 
-      <DiarySheet open={writing} onClose={() => setWriting(false)} />
+      <DiarySheet open={writing} onClose={() => setWriting(false)} initialDate={selDay ?? undefined} />
       <DiarySheet open={!!editing} onClose={() => setEditing(null)} edit={editing} />
     </div>
   )
