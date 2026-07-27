@@ -582,9 +582,10 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
           </b>
         </div>
         <ResponsiveContainer width="100%" height={100}>
-          <ComposedChart data={trend} margin={{ top: 24, right: 20, bottom: 2, left: 20 }}>
+          <ComposedChart data={trend} margin={{ top: 5, right: 20, bottom: 2, left: 20 }}>
             <XAxis dataKey="d" hide type="number" domain={[1, daysInMonth]} />
-            <YAxis hide domain={[0, (dataMax: number) => (dataMax > 0 ? dataMax * 1.15 : 1)]} />
+            {/* 최대점 위 라벨(글자+점)이 플롯 안에서 잘리지 않을 만큼만 헤드룸 확보 */}
+            <YAxis hide domain={[0, (dataMax: number) => (dataMax > 0 ? dataMax * 1.22 : 1)]} />
             <Line
               dataKey="amt"
               stroke="#C7CE9A"
