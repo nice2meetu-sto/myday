@@ -317,7 +317,6 @@ function TrendChart({ mode, anchor }: { mode: 'month' | 'year'; anchor: Date }) 
 }
 
 function SavingsView({ anchor }: { anchor: Date }) {
-  const { data: cats } = useCategories()
   const { from, to } = monthRange(anchor)
   const { data: savings } = useMoneyRange('saving', from, to)
   const { data: expenses } = useMoneyRange('expense', from, to)
@@ -330,39 +329,66 @@ function SavingsView({ anchor }: { anchor: Date }) {
     .filter((r) => r.kind === 'saving')
     .reduce((s, r) => s + r.total, 0)
 
-  const [editing, setEditing] = useState<Saving | null>(null)
+  return (
+    <Card className="mb-2" style={{ background: '#FFDE70' }}>
+      <Label className="!text-[#8a7420]">이번달 남은돈</Label>
+      <StatNumber value={remaining} warn={remaining < 0} />
+      <div className="flex gap-6 mt-4">
+        <div>
+          <Label className="!text-[#8a7420]">이번달 저축</Label>
+          <div className="text-[16px] font-bold tabular">{fmt(totalSaving)}</div>
+        </div>
+        <div>
+          <Label className="!text-[#8a7420]">누적 저축</Label>
+          <div className="text-[16px] font-bold tabular">{fmt(cumSaving)}</div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// 이번달 저축 스탯 카드 — 탭하면 카드 내용이 저축 내역으로 바뀜 (다시 탭하면 원래대로)
+function SavingStatCard({
+  savings,
+  prevSavings,
+  unit,
+  mode,
+}: {
+  savings: Saving[] | undefined
+  prevSavings: Saving[] | undefined
+  unit: string
+  mode: 'month' | 'year'
+}) {
+  const { data: cats } = useCategories()
   const [showList, setShowList] = useState(false)
+  const [editing, setEditing] = useState<Saving | null>(null)
 
   return (
     <>
-      <Card
-        className="mb-2 cursor-pointer"
-        style={{ background: '#FFDE70' }}
-        onClick={() => setShowList((v) => !v)}
-      >
-        <Label className="!text-[#8a7420]">이번달 남은돈</Label>
-        <StatNumber value={remaining} warn={remaining < 0} />
-        <div className="flex gap-6 mt-4">
-          <div>
-            <Label className="!text-[#8a7420]">이번달 저축</Label>
-            <div className="text-[16px] font-bold tabular">{fmt(totalSaving)}</div>
-          </div>
-          <div>
-            <Label className="!text-[#8a7420]">누적 저축</Label>
-            <div className="text-[16px] font-bold tabular">{fmt(cumSaving)}</div>
-          </div>
-        </div>
-        <div className="mt-3 pt-2.5 border-t border-[#e6c84e] text-[11px] font-bold text-[#8a7420] flex items-center justify-center gap-1">
-          저축 내역 {showList ? '접기 ▴' : '보기 ▾'}
-        </div>
-
-        {showList && (
-          <div className="mt-2.5 pt-2.5 border-t border-[#e6c84e]" onClick={(e) => e.stopPropagation()}>
+      <Card className="mb-2 cursor-pointer" onClick={() => setShowList((v) => !v)}>
+        {!showList ? (
+          <>
+            <div className="flex items-center justify-between">
+              <Label>{mode === 'month' ? '이번달' : '올해'} 저축</Label>
+              <span className="text-[11px] font-bold text-sub">저축 내역 ›</span>
+            </div>
+            <StatNumber size="sm" value={sumAmount(savings)} />
+            <DeltaLine cur={sumAmount(savings)} prev={sumAmount(prevSavings)} label={unit} />
+          </>
+        ) : (
+          <div onClick={(e) => e.stopPropagation()}>
+            <div
+              className="flex items-center justify-between mb-2 cursor-pointer"
+              onClick={() => setShowList(false)}
+            >
+              <Label>저축 내역</Label>
+              <span className="text-[11px] font-bold text-sub">‹ 요약</span>
+            </div>
             {!savings?.length && <EmptyState>이번달 저축 내역이 없어요</EmptyState>}
-            {(savings as Saving[] | undefined)?.map((s) => (
+            {savings?.map((s) => (
               <div
                 key={s.id}
-                className="flex justify-between items-center py-2 border-b border-[#e6c84e]/60 last:border-0 text-[13px] cursor-pointer"
+                className="flex justify-between items-center py-2 border-b border-line last:border-0 text-[13px] cursor-pointer"
                 onClick={() => setEditing(s)}
               >
                 <div>
@@ -370,7 +396,7 @@ function SavingsView({ anchor }: { anchor: Date }) {
                     {catName(cats, s.category_id) || '저축'}
                     {s.memo ? ` · ${s.memo}` : ''}
                   </div>
-                  <div className="text-[11px] text-[#a8862a]">
+                  <div className="text-[11px] text-sub">
                     {new Date(s.occurred_at).getMonth() + 1}월 {new Date(s.occurred_at).getDate()}일
                   </div>
                 </div>
@@ -460,11 +486,12 @@ export default function ExpensePage() {
       {mode === 'month' && <BudgetCard anchor={anchor} spent={sumAmount(expenses)} />}
       <Donut title="카테고리별 소비" rows={(expenses ?? []) as MoneyEntry[]} kind="expense" />
       <Donut title="카테고리별 수입" rows={(incomes ?? []) as MoneyEntry[]} kind="income" />
-      <Card className="mb-2">
-        <Label>{mode === 'month' ? '이번달' : '올해'} 저축</Label>
-        <StatNumber size="sm" value={sumAmount(savings)} />
-        <DeltaLine cur={sumAmount(savings)} prev={sumAmount(prevSavings)} label={unit} />
-      </Card>
+      <SavingStatCard
+        savings={savings as Saving[] | undefined}
+        prevSavings={prevSavings as Saving[] | undefined}
+        unit={unit}
+        mode={mode}
+      />
       <TrendChart mode={mode} anchor={anchor} />
       <SavingsView anchor={anchor} />
       <MoneySheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
