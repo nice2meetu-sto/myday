@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react'
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { PieChart, Pie, Cell, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceDot } from 'recharts'
@@ -8,7 +8,7 @@ import { BottomSheet } from '../components/BottomSheet'
 import { MoneySheet, MoneyEditTarget } from '../components/MoneySheet'
 import { useCategories, catName, catIcon, useInvalidate, useUserId } from '../lib/queries'
 import { useMoneyRange, useSummaryView, sumAmount, monthRange, yearRange } from '../lib/money'
-import { fmt, fmtWon, commaInput, parseAmount, ymd, todayStr, localDateOf } from '../lib/format'
+import { fmt, fmtWon, commaInput, parseAmount, ymd, todayStr, localDateOf, DAY_NAMES } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast } from '../stores/ui'
 import type { MoneyEntry, Saving } from '../types'
@@ -478,6 +478,83 @@ function SavingStatCard({
   )
 }
 
+// ---------------- 일자 선택 달력 팝업 ----------------
+function DayPickerSheet({
+  open,
+  onClose,
+  anchor,
+  day,
+  onPick,
+}: {
+  open: boolean
+  onClose: () => void
+  anchor: Date
+  day: number
+  onPick: (y: number, m: number, d: number) => void
+}) {
+  const [pa, setPa] = useState(anchor)
+  useEffect(() => {
+    if (open) setPa(anchor)
+  }, [open, anchor])
+
+  const daysInMonth = new Date(pa.getFullYear(), pa.getMonth() + 1, 0).getDate()
+  const firstWeekday = new Date(pa.getFullYear(), pa.getMonth(), 1).getDay()
+  const now = new Date()
+  const isSelMonth =
+    pa.getFullYear() === anchor.getFullYear() && pa.getMonth() === anchor.getMonth()
+  const isNowMonth = pa.getFullYear() === now.getFullYear() && pa.getMonth() === now.getMonth()
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="날짜 선택">
+      <PeriodNav
+        label={format(pa, 'yyyy년 M월')}
+        onPrev={() => setPa(addMonths(pa, -1))}
+        onNext={() => setPa(addMonths(pa, 1))}
+      />
+      <div className="grid grid-cols-7 gap-0.5 mb-1.5">
+        {DAY_NAMES.map((d) => (
+          <span key={d} className="text-center text-[9px] text-sub font-bold">
+            {d}
+          </span>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-0.5">
+        {Array.from({ length: firstWeekday }).map((_, i) => (
+          <div key={`e${i}`} className="aspect-square" />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const d = i + 1
+          const isSel = isSelMonth && d === day
+          const isToday = isNowMonth && d === now.getDate()
+          return (
+            <div
+              key={d}
+              className={`aspect-square flex items-center justify-center rounded-[11px] cursor-pointer text-[12px] font-semibold ${
+                isSel ? 'bg-acc text-white' : isToday ? 'bg-pale' : ''
+              }`}
+              onClick={() => {
+                onPick(pa.getFullYear(), pa.getMonth(), d)
+                onClose()
+              }}
+            >
+              {d}
+            </div>
+          )
+        })}
+      </div>
+      <button
+        className="w-full border-0 bg-[#F6F6F3] rounded-xl text-[13px] font-bold py-3 mt-3.5"
+        onClick={() => {
+          onPick(now.getFullYear(), now.getMonth(), now.getDate())
+          onClose()
+        }}
+      >
+        오늘로 이동
+      </button>
+    </BottomSheet>
+  )
+}
+
 // ---------------- 일별 보기 ----------------
 function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => void }) {
   const daysInMonth = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate()
@@ -487,13 +564,26 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
   const [day, setDay] = useState(isCurMonth ? now.getDate() : 1)
   const [catKind, setCatKind] = useState<'expense' | 'income'>('expense')
   const [editRow, setEditRow] = useState<MoneyEditTarget | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
   const monthKey = format(anchor, 'yyyy-MM')
+  const skipReset = useRef(false)
 
-  // 월 바뀌면 이번달이면 오늘, 아니면 1일로
+  // 월 바뀌면 이번달이면 오늘, 아니면 1일로 (달력에서 직접 고른 경우는 제외)
   useEffect(() => {
+    if (skipReset.current) {
+      skipReset.current = false
+      return
+    }
     setDay(isCurMonth ? now.getDate() : 1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthKey])
+
+  const pickDate = (y: number, m: number, d: number) => {
+    const newKey = `${y}-${String(m + 1).padStart(2, '0')}`
+    if (newKey !== monthKey) skipReset.current = true
+    setAnchor(new Date(y, m, 1))
+    setDay(d)
+  }
 
   const { from, to } = monthRange(anchor)
   const { data: expenses } = useMoneyRange('expense', from, to)
@@ -551,7 +641,7 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
             }}
           />
           <span className="inline-block bg-white border border-black/10 rounded-xl px-3 py-2 text-[13px] font-bold pointer-events-none">
-            {anchor.getFullYear()}년 {anchor.getMonth() + 1}월 ▾
+            {anchor.getFullYear() % 100}년 {anchor.getMonth() + 1}월 ▾
           </span>
         </div>
         <input
@@ -562,10 +652,20 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
           className="flex-1 accent-acc"
           onChange={(e) => setDay(parseInt(e.target.value, 10))}
         />
-        <b className="text-[13px] tabular flex-none w-9 text-right">
-          {anchor.getMonth() + 1}/{day}
-        </b>
+        <button
+          className="flex-none bg-white border border-black/10 rounded-xl px-2.5 py-2 text-[13px] font-bold tabular"
+          onClick={() => setPickerOpen(true)}
+        >
+          {anchor.getMonth() + 1}/{day} 📅
+        </button>
       </div>
+      <DayPickerSheet
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        anchor={anchor}
+        day={day}
+        onPick={pickDate}
+      />
 
       {/* 그날 소비/수입 (지난달 비교 없음) */}
       <div className="grid grid-cols-2 gap-2 mb-2">
