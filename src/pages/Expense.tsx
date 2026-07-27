@@ -556,12 +556,21 @@ function DayPickerSheet({
 }
 
 // ---------------- 일별 보기 ----------------
-function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => void }) {
+function DayView({
+  anchor,
+  setAnchor,
+  day,
+  setDay,
+}: {
+  anchor: Date
+  setAnchor: (d: Date) => void
+  day: number
+  setDay: (d: number) => void
+}) {
   const daysInMonth = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate()
   const now = new Date()
   const isCurMonth =
     anchor.getFullYear() === now.getFullYear() && anchor.getMonth() === now.getMonth()
-  const [day, setDay] = useState(isCurMonth ? now.getDate() : 1)
   const [catKind, setCatKind] = useState<'expense' | 'income'>('expense')
   const [editRow, setEditRow] = useState<MoneyEditTarget | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -746,6 +755,7 @@ export default function ExpensePage() {
   const nav = useNavigate()
   const [mode, setMode] = useState<'day' | 'month' | 'year'>('day')
   const [anchor, setAnchor] = useState(() => new Date())
+  const [day, setDay] = useState(() => new Date().getDate())
   const [sheetOpen, setSheetOpen] = useState(false)
 
   // 탭바에서 소비 탭 재탭 → 일/월/연 순환
@@ -798,7 +808,7 @@ export default function ExpensePage() {
         onChange={setMode}
       />
       {mode === 'day' ? (
-        <DayView anchor={anchor} setAnchor={setAnchor} />
+        <DayView anchor={anchor} setAnchor={setAnchor} day={day} setDay={setDay} />
       ) : (
         <>
           <PeriodNav label={label} onPrev={() => move(-1)} onNext={() => move(1)} />
@@ -827,7 +837,14 @@ export default function ExpensePage() {
           <SavingsView anchor={anchor} />
         </>
       )}
-      <MoneySheet open={sheetOpen} onClose={() => setSheetOpen(false)} />
+      <MoneySheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        // 일 탭에서는 보고 있던 일자로 날짜 프리필
+        initialDate={
+          mode === 'day' ? ymd(new Date(anchor.getFullYear(), anchor.getMonth(), day)) : undefined
+        }
+      />
     </div>
   )
 }
