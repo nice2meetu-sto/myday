@@ -545,9 +545,9 @@ const SPEND_WEEKS = 18
 const SPEND_COLORS = ['#FFFFFF', '#EAF4D9', '#CDE7A0', '#A0D162', '#66AB3A', '#3B7D1E']
 function spendLevel(amt: number): number {
   if (amt <= 0) return 0
-  if (amt <= 20000) return 1 // ~2만원
-  if (amt <= 50000) return 2 // ~5만원
-  if (amt <= 80000) return 3 // ~8만원
+  if (amt <= 15000) return 1 // ~1.5만원
+  if (amt <= 30000) return 2 // ~3만원
+  if (amt <= 50000) return 3 // ~5만원
   if (amt <= 100000) return 4 // ~10만원
   return 5 // 10만원 초과
 }
