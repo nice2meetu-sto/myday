@@ -11,7 +11,7 @@ import { BookCover, DiaryPhoto } from '../components/CoverImg'
 import { useBooks, updateBookPage, addQuote } from '../lib/books'
 import { pendingConfirmations } from '../lib/recurrence'
 import { useInvalidate, useUserId, useCategories, catName, catIcon } from '../lib/queries'
-import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, dayStartISO, nextDayStartISO, todoCompare, DAY_NAMES } from '../lib/format'
+import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, dayStartISO, nextDayStartISO, localDateOf, todoCompare } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, Diary, MoneyEntry, Todo } from '../types'
@@ -537,19 +537,8 @@ function spendLevel(amt: number): number {
   return 5 // 10만원 초과
 }
 
-// KST(Asia/Seoul) 기준 yyyy-MM-dd — 기기 시간대와 무관하게 항상 한국 날짜로 계산
-const KST_YMD = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Asia/Seoul',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-})
-function kstDate(d: Date): string {
-  return KST_YMD.format(d)
-}
-
 function SpendingGrid() {
-  const today = kstDate(new Date())
+  const today = todayStr()
   // 이번 주 일요일 → 거기서 (SPEND_WEEKS-1)주 전 일요일이 그리드 시작
   const todayD = new Date(today + 'T00:00:00')
   const thisSunday = addDays(todayD, -todayD.getDay())
@@ -557,7 +546,7 @@ function SpendingGrid() {
   const startStr = ymd(gridStart)
 
   const { data: sums } = useQuery({
-    queryKey: ['money', 'grid', startStr, today],
+    queryKey: ['money', 'grid', startStr],
     queryFn: async () => {
       const { data, error } = await sb()
         .from('expenses')
@@ -568,8 +557,7 @@ function SpendingGrid() {
       if (error) throw error
       const map = new Map<string, number>()
       ;(data as { amount: number; occurred_at: string }[]).forEach((r) => {
-        // 소비도 KST 기준 날짜로 버킷
-        const d = kstDate(new Date(r.occurred_at))
+        const d = localDateOf(r.occurred_at)
         map.set(d, (map.get(d) ?? 0) + Number(r.amount))
       })
       return map
@@ -594,15 +582,11 @@ function SpendingGrid() {
       </div>
       <div className="mt-3 flex flex-col gap-[3px]">
         {Array.from({ length: 7 }).map((_, dow) => (
-          <div key={dow} className="flex gap-[3px] items-center">
-            <span className="w-3 flex-none text-[8px] font-bold text-sub text-center leading-none">
-              {DAY_NAMES[dow]}
-            </span>
+          <div key={dow} className="flex gap-[3px]">
             {Array.from({ length: SPEND_WEEKS }).map((_, w) => {
               const date = addDays(gridStart, w * 7 + dow)
               const dateStr = ymd(date)
               const future = dateStr > today
-              const isToday = dateStr === today
               const amt = sums?.get(dateStr) ?? 0
               const lvl = spendLevel(amt)
               return (
@@ -614,11 +598,10 @@ function SpendingGrid() {
                       ? { visibility: 'hidden' }
                       : {
                           background: SPEND_COLORS[lvl],
-                          border: isToday ? '1.5px solid #8A8266' : '1px solid rgba(0,0,0,0.06)',
-                          boxShadow: isToday ? '0 0 0 1.5px #BAAF9D' : undefined,
+                          border: '1px solid rgba(0,0,0,0.06)',
                         }
                   }
-                  title={future ? '' : `${fmtDot(dateStr)} ${fmt(amt)}원${isToday ? ' · 오늘' : ''}`}
+                  title={future ? '' : `${fmtDot(dateStr)} ${fmt(amt)}원`}
                 />
               )
             })}
