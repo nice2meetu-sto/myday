@@ -6,7 +6,7 @@ import { addMonths, addYears, format } from 'date-fns'
 import { Card, Label, StatNumber, SegmentedControl, AddButton, PageHead, PeriodNav, EmptyState, SaveButton, inputCls } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { MoneySheet } from '../components/MoneySheet'
-import { useCategories, catName, useInvalidate, useUserId } from '../lib/queries'
+import { useCategories, catName, catIcon, useInvalidate, useUserId } from '../lib/queries'
 import { useMoneyRange, useSummaryView, sumAmount, monthRange, yearRange } from '../lib/money'
 import { fmt, fmtWon, commaInput, parseAmount, ymd, todayStr, localDateOf } from '../lib/format'
 import { sb } from '../lib/supabase'
@@ -35,18 +35,26 @@ function DeltaLine({ cur, prev, label }: { cur: number; prev: number; label: str
   )
 }
 
+/** '9:05' 형식 시간 (occurred_at ISO → 로컬) */
+function timeOf(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
 function Donut({
   title,
   rows,
   kind,
   onTap,
   titleRight,
+  dayMode = false,
 }: {
   title: string
   rows: MoneyEntry[]
   kind: 'expense' | 'income'
   onTap?: () => void
   titleRight?: ReactNode
+  dayMode?: boolean
 }) {
   const { data: cats } = useCategories()
   const [drill, setDrill] = useState<string | null>(null)
@@ -153,13 +161,44 @@ function Donut({
               {m.items.map((it) => (
                 <div key={it.id} className="flex justify-between py-0.5 pl-3 text-sub">
                   <span>
-                    {new Date(it.occurred_at).getDate()}일 {it.memo ?? ''}
+                    {/* 일 탭에서는 날짜 대신 시간 */}
+                    {dayMode ? timeOf(it.occurred_at) : `${new Date(it.occurred_at).getDate()}일`}{' '}
+                    {it.memo ?? ''}
                   </span>
                   <span className="tabular">{fmt(Number(it.amount))}</span>
                 </div>
               ))}
             </div>
           ))}
+        </div>
+      )}
+      {/* 일 탭: 카테고리 누르기 전엔 그날 전체 내역을 한 줄씩 (시간·아이콘·카테고리·내용·금액) */}
+      {dayMode && !drill && (
+        <div className="mt-3 pt-1 border-t border-line">
+          {rows
+            .slice()
+            .sort((a, b) => a.occurred_at.localeCompare(b.occurred_at))
+            .map((r) => {
+              const icon = catIcon(cats, r.major_category_id) || catIcon(cats, r.minor_category_id)
+              const name =
+                catName(cats, r.minor_category_id) || catName(cats, r.major_category_id) || '미분류'
+              return (
+                <div
+                  key={r.id}
+                  className="flex items-center gap-1.5 py-[5px] text-[12px] border-b border-line last:border-0"
+                >
+                  <span className="text-sub tabular text-[11px] flex-none w-9">
+                    {timeOf(r.occurred_at)}
+                  </span>
+                  <span className="truncate flex-1 font-semibold">
+                    {icon && <span className="mr-0.5">{icon}</span>}
+                    {name}
+                    {r.memo ? <span className="font-medium text-[#666]"> {r.memo}</span> : ''}
+                  </span>
+                  <b className="tabular flex-none">{fmt(Number(r.amount))}</b>
+                </div>
+              )
+            })}
         </div>
       )}
       </div>
@@ -533,6 +572,7 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
       {/* 카테고리별 그래프 — 카드 탭하면 소비 ↔ 수입 전환 */}
       <Donut
         key={catKind}
+        dayMode
         title={`카테고리별 ${catKind === 'expense' ? '소비' : '수입'}`}
         rows={catKind === 'expense' ? dayExp : dayInc}
         kind={catKind}
