@@ -702,7 +702,7 @@ function DayView({
             {anchor.getMonth() + 1}/{day}까지 {fmt(cumSum)}
           </b>
         </div>
-        <ResponsiveContainer width="100%" height={122}>
+        <ResponsiveContainer width="100%" height={119}>
           <ComposedChart data={trend} margin={{ top: 5, right: 6, bottom: 0, left: 6 }}>
             {/* 하단 일자 눈금 (1~말일, 작은 회색 글씨) */}
             <XAxis
