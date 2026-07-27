@@ -5,7 +5,7 @@ import { PieChart, Pie, Cell, ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, R
 import { addMonths, addYears, format } from 'date-fns'
 import { Card, Label, StatNumber, SegmentedControl, AddButton, PageHead, PeriodNav, EmptyState, SaveButton, inputCls } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
-import { MoneySheet } from '../components/MoneySheet'
+import { MoneySheet, MoneyEditTarget } from '../components/MoneySheet'
 import { useCategories, catName, catIcon, useInvalidate, useUserId } from '../lib/queries'
 import { useMoneyRange, useSummaryView, sumAmount, monthRange, yearRange } from '../lib/money'
 import { fmt, fmtWon, commaInput, parseAmount, ymd, todayStr, localDateOf } from '../lib/format'
@@ -48,6 +48,7 @@ function Donut({
   onTap,
   titleRight,
   dayMode = false,
+  onRowTap,
 }: {
   title: string
   rows: MoneyEntry[]
@@ -55,6 +56,7 @@ function Donut({
   onTap?: () => void
   titleRight?: ReactNode
   dayMode?: boolean
+  onRowTap?: (r: MoneyEntry) => void
 }) {
   const { data: cats } = useCategories()
   const [drill, setDrill] = useState<string | null>(null)
@@ -185,7 +187,8 @@ function Donut({
               return (
                 <div
                   key={r.id}
-                  className="flex items-center gap-1.5 py-[5px] text-[12px] border-b border-line last:border-0"
+                  className={`flex items-center gap-1.5 py-[5px] text-[12px] border-b border-line last:border-0 ${onRowTap ? 'cursor-pointer' : ''}`}
+                  onClick={onRowTap ? () => onRowTap(r) : undefined}
                 >
                   <span className="text-sub tabular text-[11px] flex-none w-9">
                     {timeOf(r.occurred_at)}
@@ -477,6 +480,7 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
     anchor.getFullYear() === now.getFullYear() && anchor.getMonth() === now.getMonth()
   const [day, setDay] = useState(isCurMonth ? now.getDate() : 1)
   const [catKind, setCatKind] = useState<'expense' | 'income'>('expense')
+  const [editRow, setEditRow] = useState<MoneyEditTarget | null>(null)
   const monthKey = format(anchor, 'yyyy-MM')
 
   // 월 바뀌면 이번달이면 오늘, 아니면 1일로
@@ -577,8 +581,8 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
             {anchor.getMonth() + 1}/{day}까지 {fmt(cumSum)}
           </b>
         </div>
-        <ResponsiveContainer width="100%" height={120}>
-          <ComposedChart data={trend} margin={{ top: 26, right: 20, bottom: 2, left: 20 }}>
+        <ResponsiveContainer width="100%" height={100}>
+          <ComposedChart data={trend} margin={{ top: 24, right: 20, bottom: 2, left: 20 }}>
             <XAxis dataKey="d" hide type="number" domain={[1, daysInMonth]} />
             <YAxis hide domain={[0, (dataMax: number) => (dataMax > 0 ? dataMax * 1.15 : 1)]} />
             <Line
@@ -618,19 +622,22 @@ function DayView({ anchor, setAnchor }: { anchor: Date; setAnchor: (d: Date) => 
         rows={catKind === 'expense' ? dayExp : dayInc}
         kind={catKind}
         onTap={() => setCatKind((k) => (k === 'expense' ? 'income' : 'expense'))}
+        onRowTap={(r) => setEditRow({ kind: catKind, entry: r })}
         titleRight={
           <span className="text-[11px] font-bold text-sub">
             {catKind === 'expense' ? '수입 보기 ›' : '‹ 소비 보기'}
           </span>
         }
       />
+      {/* 내역 줄 탭 → 수정 시트 */}
+      <MoneySheet open={!!editRow} onClose={() => setEditRow(null)} edit={editRow} />
     </>
   )
 }
 
 export default function ExpensePage() {
   const nav = useNavigate()
-  const [mode, setMode] = useState<'day' | 'month' | 'year'>('month')
+  const [mode, setMode] = useState<'day' | 'month' | 'year'>('day')
   const [anchor, setAnchor] = useState(() => new Date())
   const [sheetOpen, setSheetOpen] = useState(false)
 
