@@ -331,10 +331,15 @@ function SavingsView({ anchor }: { anchor: Date }) {
     .reduce((s, r) => s + r.total, 0)
 
   const [editing, setEditing] = useState<Saving | null>(null)
+  const [showList, setShowList] = useState(false)
 
   return (
     <>
-      <Card className="mb-2" style={{ background: '#FFDE70' }}>
+      <Card
+        className="mb-2 cursor-pointer"
+        style={{ background: '#FFDE70' }}
+        onClick={() => setShowList((v) => !v)}
+      >
         <Label className="!text-[#8a7420]">이번달 남은돈</Label>
         <StatNumber value={remaining} warn={remaining < 0} />
         <div className="flex gap-6 mt-4">
@@ -347,30 +352,35 @@ function SavingsView({ anchor }: { anchor: Date }) {
             <div className="text-[16px] font-bold tabular">{fmt(cumSaving)}</div>
           </div>
         </div>
-      </Card>
-      <Card>
-        <Label className="mb-2">저축 내역</Label>
-        {!savings?.length && <EmptyState>이번달 저축 내역이 없어요</EmptyState>}
-        {(savings as Saving[] | undefined)?.map((s) => (
-          <div
-            key={s.id}
-            className="flex justify-between items-center py-2 border-b border-line last:border-0 text-[13px] cursor-pointer"
-            onClick={() => setEditing(s)}
-          >
-            <div>
-              <div className="font-semibold">
-                {catName(cats, s.category_id) || '저축'}
-                {s.memo ? ` · ${s.memo}` : ''}
+        <div className="mt-3 pt-2.5 border-t border-[#e6c84e] text-[11px] font-bold text-[#8a7420] flex items-center justify-center gap-1">
+          저축 내역 {showList ? '접기 ▴' : '보기 ▾'}
+        </div>
+
+        {showList && (
+          <div className="mt-2.5 pt-2.5 border-t border-[#e6c84e]" onClick={(e) => e.stopPropagation()}>
+            {!savings?.length && <EmptyState>이번달 저축 내역이 없어요</EmptyState>}
+            {(savings as Saving[] | undefined)?.map((s) => (
+              <div
+                key={s.id}
+                className="flex justify-between items-center py-2 border-b border-[#e6c84e]/60 last:border-0 text-[13px] cursor-pointer"
+                onClick={() => setEditing(s)}
+              >
+                <div>
+                  <div className="font-semibold">
+                    {catName(cats, s.category_id) || '저축'}
+                    {s.memo ? ` · ${s.memo}` : ''}
+                  </div>
+                  <div className="text-[11px] text-[#a8862a]">
+                    {new Date(s.occurred_at).getMonth() + 1}월 {new Date(s.occurred_at).getDate()}일
+                  </div>
+                </div>
+                <b className={`tabular ${Number(s.amount) < 0 ? 'text-warn' : ''}`}>
+                  {fmt(Number(s.amount))}
+                </b>
               </div>
-              <div className="text-[11px] text-sub">
-                {new Date(s.occurred_at).getMonth() + 1}월 {new Date(s.occurred_at).getDate()}일
-              </div>
-            </div>
-            <b className={`tabular ${Number(s.amount) < 0 ? 'text-warn' : ''}`}>
-              {fmt(Number(s.amount))}
-            </b>
+            ))}
           </div>
-        ))}
+        )}
       </Card>
       <MoneySheet
         open={!!editing}
