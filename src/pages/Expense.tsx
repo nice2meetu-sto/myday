@@ -703,7 +703,7 @@ function DayView({
               dataKey="d"
               type="number"
               domain={[1, daysInMonth]}
-              ticks={Array.from({ length: daysInMonth }, (_, i) => i + 1)}
+              ticks={Array.from({ length: daysInMonth }, (_, i) => i + 1).filter((d) => d % 2 === 1)}
               interval={0}
               tick={{ fontSize: 8, fill: '#B3AFA3', fontWeight: 600 }}
               axisLine={false}
@@ -731,7 +731,9 @@ function DayView({
                 strokeWidth={1}
                 label={{
                   value: fmt(maxAmt),
-                  position: 'top',
+                  // 최고점이 가장자리에 있으면 잘리지 않게 안쪽으로 표시
+                  position:
+                    maxDay > daysInMonth - 4 ? 'left' : maxDay < 4 ? 'right' : 'top',
                   fontSize: 10,
                   fontWeight: 700,
                   fill: '#8A8266',
