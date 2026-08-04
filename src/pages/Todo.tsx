@@ -171,6 +171,7 @@ export default function TodoPage() {
     const startY = e.clientY
     let lifted = false
     let dragged = false
+    let moved = false // 집기 전 이동 여부 — 스크롤하다 뗀 경우 완료 토글 방지
 
     const timer = setTimeout(() => {
       lifted = true
@@ -183,7 +184,10 @@ export default function TodoPage() {
       const dx = ev.clientX - startX
       const dy = ev.clientY - startY
       if (!lifted) {
-        if (Math.hypot(dx, dy) > 8) clearTimeout(timer)
+        if (Math.hypot(dx, dy) > 8) {
+          clearTimeout(timer)
+          moved = true
+        }
         return
       }
       ev.preventDefault()
@@ -232,6 +236,8 @@ export default function TodoPage() {
         }
         // dragged=false → picked 유지: 탭-투-플레이스 모드
       } else {
+        // 움직이다 뗀 경우(스크롤 시도)는 탭으로 치지 않음
+        if (moved) return
         const cur = pickRef.current
         if (cur) {
           cancelPick()
