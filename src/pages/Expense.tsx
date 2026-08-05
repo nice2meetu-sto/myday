@@ -600,6 +600,12 @@ function DayView({
     setDay(d)
   }
 
+  // 하루 앞뒤 이동 (월 경계 자동 처리)
+  const shiftDay = (delta: number) => {
+    const d = new Date(anchor.getFullYear(), anchor.getMonth(), day + delta)
+    pickDate(d.getFullYear(), d.getMonth(), d.getDate())
+  }
+
   const { from, to } = monthRange(anchor)
   const { data: expenses } = useMoneyRange('expense', from, to)
   const { data: incomes } = useMoneyRange('income', from, to)
@@ -643,22 +649,14 @@ function DayView({
 
   return (
     <>
-      {/* 년월 선택 + 일 슬라이더 */}
-      <div className="flex items-center gap-3 mb-3.5 px-0.5">
-        <div className="relative flex-none">
-          <input
-            type="month"
-            className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-            value={monthKey}
-            onChange={(e) => {
-              const [y, m] = e.target.value.split('-').map(Number)
-              if (y && m) setAnchor(new Date(y, m - 1, 1))
-            }}
-          />
-          <span className="inline-block bg-white border border-black/10 rounded-xl px-3 py-2 text-[13px] font-bold pointer-events-none">
-            {anchor.getFullYear() % 100}년 {anchor.getMonth() + 1}월 ▾
-          </span>
-        </div>
+      {/* 하루 이동 화살표 + 일 슬라이더 + 날짜(달력) 버튼 */}
+      <div className="flex items-center gap-2.5 mb-3.5 px-0.5">
+        <button
+          className="flex-none w-[34px] h-[34px] rounded-xl bg-white border border-black/10 text-[15px] font-bold text-sub"
+          onClick={() => shiftDay(-1)}
+        >
+          ‹
+        </button>
         <input
           type="range"
           min={1}
@@ -667,6 +665,12 @@ function DayView({
           className="flex-1 accent-acc"
           onChange={(e) => setDay(parseInt(e.target.value, 10))}
         />
+        <button
+          className="flex-none w-[34px] h-[34px] rounded-xl bg-white border border-black/10 text-[15px] font-bold text-sub"
+          onClick={() => shiftDay(1)}
+        >
+          ›
+        </button>
         <button
           className="flex-none bg-white border border-black/10 rounded-xl px-2.5 py-2 text-[13px] font-bold tabular"
           onClick={() => setPickerOpen(true)}
