@@ -657,6 +657,12 @@ function DayView({
         >
           ‹
         </button>
+        <button
+          className="flex-none w-[34px] h-[34px] rounded-xl bg-white border border-black/10 text-[15px] font-bold text-sub"
+          onClick={() => shiftDay(1)}
+        >
+          ›
+        </button>
         <input
           type="range"
           min={1}
@@ -665,12 +671,6 @@ function DayView({
           className="flex-1 accent-acc"
           onChange={(e) => setDay(parseInt(e.target.value, 10))}
         />
-        <button
-          className="flex-none w-[34px] h-[34px] rounded-xl bg-white border border-black/10 text-[15px] font-bold text-sub"
-          onClick={() => shiftDay(1)}
-        >
-          ›
-        </button>
         <button
           className="flex-none bg-white border border-black/10 rounded-xl px-2.5 py-2 text-[13px] font-bold tabular"
           onClick={() => setPickerOpen(true)}
