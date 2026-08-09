@@ -1,15 +1,182 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { Card, Label, EmptyState, inputCls, Field, SaveButton, SegmentedControl } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { BookCover } from '../components/CoverImg'
 import { useBook, useQuotes, updateBookPage, addQuote } from '../lib/books'
 import { deleteImage, uploadImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
-import { todayStr, ymd } from '../lib/format'
+import { todayStr, ymd, fmtSlash } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
-import type { Book, BookQuote } from '../types'
+import type { Book, BookQuote, ReadingLog } from '../types'
+
+// ---------------- 읽은 기록 목록/수정 시트 ----------------
+function timeHM(iso: string): string {
+  const d = new Date(iso)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+function ReadingLogsSheet({
+  bookId,
+  open,
+  onClose,
+}: {
+  bookId: string
+  open: boolean
+  onClose: () => void
+}) {
+  const invalidate = useInvalidate()
+  const [editId, setEditId] = useState<string | null>(null)
+  const [date, setDate] = useState('')
+  const [time, setTime] = useState('')
+  const [pageInput, setPageInput] = useState('')
+
+  const { data: logs, refetch } = useQuery({
+    queryKey: ['reading_logs', 'book', bookId],
+    queryFn: async () => {
+      const { data, error } = await sb()
+        .from('reading_logs')
+        .select('*')
+        .eq('book_id', bookId)
+        .order('log_date', { ascending: false })
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return data as ReadingLog[]
+    },
+    enabled: open,
+  })
+
+  const startEdit = (l: ReadingLog) => {
+    setEditId(l.id)
+    setDate(l.log_date)
+    setTime(timeHM(l.created_at))
+    setPageInput(String(l.end_page))
+  }
+
+  // 기록 변경 후 책의 현재 쪽수를 남은 기록의 최대값으로 재계산
+  const syncBookPage = async () => {
+    const { data } = await sb().from('reading_logs').select('end_page').eq('book_id', bookId)
+    if (data && data.length) {
+      const maxEnd = Math.max(...data.map((r) => r.end_page))
+      await sb().from('books').update({ current_page: maxEnd }).eq('id', bookId)
+    }
+  }
+
+  const save = async (l: ReadingLog) => {
+    const p = parseInt(pageInput, 10)
+    if (!date || !p) {
+      toast('일자와 쪽수를 확인해주세요')
+      return
+    }
+    const { error } = await sb()
+      .from('reading_logs')
+      .update({
+        log_date: date,
+        end_page: p,
+        // 쪽수를 고치면 그날 읽은 양도 같은 만큼 보정
+        pages_read: Math.max(0, l.pages_read + (p - l.end_page)),
+        created_at: new Date(`${date}T${time || '12:00'}:00`).toISOString(),
+      })
+      .eq('id', l.id)
+    if (error) {
+      toastError('저장 실패', error)
+      return
+    }
+    await syncBookPage()
+    invalidate(['books', 'reading_logs'])
+    refetch()
+    setEditId(null)
+    toast('수정했어요')
+  }
+
+  const remove = async (l: ReadingLog) => {
+    if (!confirm('이 기록을 삭제할까요?')) return
+    await sb().from('reading_logs').delete().eq('id', l.id)
+    await syncBookPage()
+    invalidate(['books', 'reading_logs'])
+    refetch()
+    setEditId(null)
+    toast('삭제했어요')
+  }
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title="읽은 기록">
+      {!logs?.length && <EmptyState>아직 읽은 기록이 없어요</EmptyState>}
+      {logs?.map((l) => (
+        <div key={l.id} className="border-b border-line last:border-0">
+          {editId === l.id ? (
+            <div className="py-2.5">
+              <div className="flex gap-2">
+                <Field label="일자">
+                  <input
+                    type="date"
+                    className={inputCls}
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                </Field>
+                <Field label="시간">
+                  <input
+                    type="time"
+                    className={inputCls}
+                    value={time}
+                    onChange={(e) => setTime(e.target.value)}
+                  />
+                </Field>
+                <Field label="쪽수">
+                  <input
+                    className={inputCls}
+                    inputMode="numeric"
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value.replace(/[^0-9]/g, ''))}
+                  />
+                </Field>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  className="flex-1 border-0 rounded-[14px] py-[11px] font-bold text-[13px] bg-[#F2F2EF] text-warn"
+                  onClick={() => remove(l)}
+                >
+                  삭제
+                </button>
+                <button
+                  className="flex-1 border-0 rounded-[14px] py-[11px] font-bold text-[13px] bg-[#F2F2EF]"
+                  onClick={() => setEditId(null)}
+                >
+                  취소
+                </button>
+                <button
+                  className="flex-1 border-0 rounded-[14px] py-[11px] font-bold text-[13px] bg-acc text-white"
+                  onClick={() => save(l)}
+                >
+                  저장
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              className="flex items-center gap-2 py-2.5 cursor-pointer"
+              onClick={() => startEdit(l)}
+            >
+              <span className="text-[11px] text-sub font-bold tabular flex-none w-20">
+                {fmtSlash(l.log_date)} {timeHM(l.created_at)}
+              </span>
+              <span className="text-[13px] font-semibold flex-1 tabular">{l.end_page}쪽까지</span>
+              {l.pages_read > 0 && (
+                <span className="text-[11px] text-[#9AA05E] font-bold tabular">
+                  +{l.pages_read}쪽
+                </span>
+              )}
+              <span className="text-sub text-[12px] flex-none">›</span>
+            </div>
+          )}
+        </div>
+      ))}
+    </BottomSheet>
+  )
+}
 
 // ---------------- 책 정보 + 필사 수정 시트 ----------------
 function BookEditSheet({
@@ -256,6 +423,7 @@ export default function BookDetailPage() {
   const [quoteText, setQuoteText] = useState('')
   const [quotePage, setQuotePage] = useState('')
   const [editOpen, setEditOpen] = useState(false)
+  const [logsOpen, setLogsOpen] = useState(false)
 
   useEffect(() => {
     if (book) setPage(book.current_page)
@@ -364,6 +532,7 @@ export default function BookDetailPage() {
         </button>
       </div>
       <BookEditSheet book={book} quotes={quotes ?? []} open={editOpen} onClose={() => setEditOpen(false)} />
+      <ReadingLogsSheet bookId={book.id} open={logsOpen} onClose={() => setLogsOpen(false)} />
 
       <div className="flex gap-4 mb-3">
         <BookCover title={book.title} coverUrl={book.cover_url} className="w-[110px] h-[164px] rounded-[10px] flex-none" />
@@ -417,7 +586,7 @@ export default function BookDetailPage() {
       </div>
 
       {book.status !== 'want' && (
-        <Card className="mb-3">
+        <Card className="mb-3 cursor-pointer" onClick={() => setLogsOpen(true)}>
           <div className="flex justify-between items-baseline">
             <Label>읽은 쪽수</Label>
             <b className="text-[13px] tabular">
@@ -432,12 +601,13 @@ export default function BookDetailPage() {
               max={total}
               value={page}
               className="w-full accent-acc mt-3"
+              onClick={(e) => e.stopPropagation()}
               onChange={(e) => setPage(parseInt(e.target.value, 10))}
               onPointerUp={() => commitPage(page)}
               onKeyUp={(e) => e.key !== 'Tab' && commitPage(page)}
             />
           ) : (
-            <div className="flex gap-2 mt-2">
+            <div className="flex gap-2 mt-2" onClick={(e) => e.stopPropagation()}>
               <input
                 className={inputCls}
                 inputMode="numeric"
