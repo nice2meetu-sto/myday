@@ -649,12 +649,79 @@ function StatsView() {
   )
 }
 
-// ---------------- 필사 뷰 ----------------
+// ---------------- 후기 목록 (다 보고 남긴 평점·후기) ----------------
+function ReviewList() {
+  const nav = useNavigate()
+  const { data: books } = useBooks()
+
+  const reviewed = useMemo(
+    () =>
+      (books ?? [])
+        .filter((b) => b.status === 'finished' && (b.review || b.rating != null))
+        .sort((a, b) => (b.finished_at ?? '').localeCompare(a.finished_at ?? '')),
+    [books],
+  )
+
+  if (!reviewed.length)
+    return <EmptyState>다 보고 나서 남긴 후기가 여기에 모여요</EmptyState>
+
+  return (
+    <div>
+      {reviewed.map((b) => (
+        <motion.div
+          {...popIn}
+          whileTap={{ scale: 0.98 }}
+          key={b.id}
+          className="bg-white rounded-card p-3.5 mb-3 shadow-card border border-black/10 cursor-pointer flex gap-3.5"
+          onClick={() => nav(`/hobby/${b.id}`)}
+        >
+          <BookCover
+            title={b.title}
+            coverUrl={b.cover_url}
+            thumb
+            className="w-[62px] h-[92px] rounded-lg flex-none"
+          />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="text-[13px] font-bold leading-snug truncate">
+                  {kindIcon(b)} {b.title}
+                </div>
+                {b.author && (
+                  <div className="text-[10px] text-sub font-semibold mt-0.5 truncate">{b.author}</div>
+                )}
+              </div>
+              {b.rating != null && (
+                <b className="text-[12px] text-[#E8B84B] flex-none tabular">★ {b.rating}</b>
+              )}
+            </div>
+            {b.review ? (
+              <p className="mt-1.5 mb-0 text-[12.5px] leading-[1.6] text-[#444] line-clamp-4">
+                {b.review}
+              </p>
+            ) : (
+              <p className="mt-1.5 mb-0 text-[12px] text-sub">별점만 남겼어요</p>
+            )}
+            {b.finished_at && (
+              <div className="text-[10px] text-sub font-semibold mt-1.5">
+                {new Date(b.finished_at + 'T00:00:00').getMonth() + 1}월{' '}
+                {new Date(b.finished_at + 'T00:00:00').getDate()}일
+              </div>
+            )}
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+// ---------------- 문장 뷰 ----------------
 const PAGE_SIZE = 20
 
 function QuotesView() {
   const { data: books } = useBooks()
   const invalidate = useInvalidate()
+  const [mode, setMode] = useState<'quote' | 'review'>('quote')
   const [filter, setFilter] = useState<string | null>(null)
   const [limit, setLimit] = useState(PAGE_SIZE)
   const { data: quotes } = useQuotes(filter ?? undefined)
@@ -681,9 +748,34 @@ function QuotesView() {
 
   const booksWithQuotes = (books ?? []).filter((b) => (quotes ?? []).some((q) => q.book_id === b.id) || filter === b.id)
 
+  if (mode === 'review')
+    return (
+      <div>
+        <SegmentedControl
+          className="mb-3.5 mt-0.5"
+          options={[
+            { value: 'quote', label: '문장' },
+            { value: 'review', label: '후기' },
+          ]}
+          value={mode}
+          onChange={setMode}
+        />
+        <ReviewList />
+      </div>
+    )
+
   return (
     <div>
-      <div className="flex gap-1.5 overflow-x-auto pb-3 mt-1 no-scrollbar">
+      <SegmentedControl
+        className="mb-3 mt-0.5"
+        options={[
+          { value: 'quote', label: '문장' },
+          { value: 'review', label: '후기' },
+        ]}
+        value={mode}
+        onChange={setMode}
+      />
+      <div className="flex gap-1.5 overflow-x-auto pb-3 no-scrollbar">
         <span
           className={`flex-none rounded-[10px] px-3 py-2 text-[11px] font-bold cursor-pointer ${!filter ? 'bg-acc text-white' : 'bg-white shadow-card'}`}
           onClick={() => setFilter(null)}
