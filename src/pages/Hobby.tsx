@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { Card, Label, SegmentedControl, AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, ChipRow, PeriodNav, popIn } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { BookCover, coverFallbackColor } from '../components/CoverImg'
-import { useBooks, useQuotes, kindIcon, kindLabel, unitOf, hasProgress, isVideo } from '../lib/books'
+import { useBooks, useQuotes, kindIcon, kindLabel, unitOf, logUnitOf, hasProgress, isVideo } from '../lib/books'
 import { uploadImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { ymd, todayStr, DAY_NAMES, dayStartISO, nextDayStartISO, localDateOf } from '../lib/format'
@@ -468,21 +468,23 @@ function StatsView() {
   }, [books])
   const maxFinished = Math.max(1, ...finishedByMonth.map((m) => m.books.length))
 
-  // 이번달 진행량 — 단위가 다르니 종류별로 따로 집계 (쪽 / 화)
+  // 이번달 진행량 — 단위가 다르니 종류별로 따로 집계 (쪽 / 화 / 편)
   const thisMonthTotals = useMemo(() => {
     let pages = 0
     let eps = 0
+    let movies = 0
     ;(allLogs12m ?? [])
       .filter((l) => l.log_date.startsWith(format(new Date(), 'yyyy-MM')))
       .forEach((l) => {
         const b = bookMap.get(l.book_id)
         if (b && isVideo(b)) {
-          if (b.video_type !== 'movie') eps += l.pages_read
+          if (b.video_type === 'movie') movies += l.pages_read
+          else eps += l.pages_read
         } else {
           pages += l.pages_read
         }
       })
-    return { pages, eps }
+    return { pages, eps, movies }
   }, [allLogs12m, bookMap])
 
   return (
@@ -566,11 +568,14 @@ function StatsView() {
                   <b className="flex-1 truncate">{b?.title ?? '삭제된 항목'}</b>
                   <span className="font-bold">
                     +{v.pages}
-                    {unitOf(b)}
+                    {logUnitOf(b)}
                   </span>
-                  <span className="text-sub text-[11px]">
-                    ({v.end - v.pages}→{v.end})
-                  </span>
+                  {/* 영화는 1편 완료라 구간 표시가 의미 없다 */}
+                  {hasProgress(b) && (
+                    <span className="text-sub text-[11px]">
+                      ({v.end - v.pages}→{v.end})
+                    </span>
+                  )}
                 </div>
               )
             })}
@@ -623,12 +628,13 @@ function StatsView() {
           </div>
         )}
         <div className="text-[12px] text-sub mt-2.5">
-          {thisMonthTotals.pages || thisMonthTotals.eps ? (
+          {thisMonthTotals.pages || thisMonthTotals.eps || thisMonthTotals.movies ? (
             <>
               이번달{' '}
               {[
                 thisMonthTotals.pages ? `${thisMonthTotals.pages}쪽` : null,
                 thisMonthTotals.eps ? `${thisMonthTotals.eps}화` : null,
+                thisMonthTotals.movies ? `${thisMonthTotals.movies}편` : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}{' '}

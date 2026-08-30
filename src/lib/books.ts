@@ -21,6 +21,12 @@ export function hasProgress(b: KindLike): boolean {
   return !(isVideo(b) && b?.video_type === 'movie')
 }
 
+/** 기록 단위 — 책은 쪽, 드라마는 화, 영화는 편(완료 시 1편으로 기록) */
+export function logUnitOf(b: KindLike): string {
+  if (!isVideo(b)) return '쪽'
+  return b?.video_type === 'movie' ? '편' : '화'
+}
+
 export function kindIcon(b: KindLike): string {
   if (!isVideo(b)) return '📖'
   return b?.video_type === 'drama' ? '📺' : '🎬'

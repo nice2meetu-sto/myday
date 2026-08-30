@@ -74,23 +74,47 @@ function FinishSheet({
   if (!open && loaded.current) loaded.current = false
 
   const save = async (withReview: boolean) => {
+    const day = date || todayStr()
     const patch: Record<string, unknown> = {
       status: 'finished',
-      finished_at: date || todayStr(),
+      finished_at: day,
       updated_at: new Date().toISOString(),
     }
     if (withReview) {
       patch.rating = rating || null
       patch.review = review.trim() || null
     }
-    // 완료하면 진행도 100%로 (영화처럼 분량이 없으면 그대로)
-    if (book.total_pages) patch.current_page = book.total_pages
+    // 완료하면 진행도 100%로 (영화는 분량이 없으니 1편으로)
+    patch.current_page = book.total_pages ? book.total_pages : hasProgress(book) ? book.current_page : 1
     const { error } = await sb().from('books').update(patch).eq('id', book.id)
     if (error) {
       toastError('저장 실패', error)
       return
     }
-    invalidate(['books'])
+    // 영화는 진행 기록이 없어 통계 달력에 안 뜨므로, 본 날 1편짜리 기록을 남긴다
+    if (!hasProgress(book)) {
+      const { data: existing } = await sb()
+        .from('reading_logs')
+        .select('id')
+        .eq('book_id', book.id)
+        .limit(1)
+      if (existing?.length) {
+        await sb()
+          .from('reading_logs')
+          .update({ log_date: day, created_at: new Date(`${day}T12:00:00`).toISOString() })
+          .eq('id', existing[0].id)
+      } else {
+        await sb().from('reading_logs').insert({
+          user_id: book.user_id,
+          book_id: book.id,
+          log_date: day,
+          end_page: 1,
+          pages_read: 1,
+          created_at: new Date(`${day}T12:00:00`).toISOString(),
+        })
+      }
+    }
+    invalidate(['books', 'reading_logs'])
     toast(video ? '완주를 축하해요!' : '완독을 축하해요!')
     onClose()
   }
@@ -599,9 +623,13 @@ export default function BookDetailPage() {
       return
     } else {
       await sb().from('books').update({ status: 'reading', finished_at: null }).eq('id', book.id)
+      // 영화는 완료 시 자동 생성한 1편 기록을 되돌린다
+      if (!hasProgress(book)) {
+        await sb().from('reading_logs').delete().eq('book_id', book.id)
+      }
       toast(video ? '다시 보는 중으로 바꿨어요' : '다시 읽는 중으로 바꿨어요')
     }
-    invalidate(['books'])
+    invalidate(['books', 'reading_logs'])
   }
 
   const removeBook = async () => {
