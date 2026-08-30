@@ -105,16 +105,33 @@ create table if not exists books (
   cover_url text,
   title text not null,
   author text,
+  kind text not null default 'book' check (kind in ('book','video')),
+  video_type text check (video_type in ('movie','drama')),
   total_pages int,
   current_page int default 0,
   status text not null default 'want' check (status in ('want','reading','finished')),
   started_at date,
   finished_at date,
   rating numeric(2,1) check (rating between 0 and 5),
+  review text,
   shelf_order int default 0,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+-- 후기 탭 개편: 책 + 영상(영화/드라마) 통합 (기존 테이블에 컬럼 추가)
+alter table books add column if not exists kind text not null default 'book';
+alter table books add column if not exists video_type text;
+alter table books add column if not exists review text;
+do $$
+begin
+  alter table books add constraint books_kind_chk check (kind in ('book','video'));
+exception when duplicate_object then null;
+end $$;
+do $$
+begin
+  alter table books add constraint books_video_type_chk check (video_type in ('movie','drama'));
+exception when duplicate_object then null;
+end $$;
 
 -- 필사
 create table if not exists book_quotes (

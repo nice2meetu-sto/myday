@@ -66,18 +66,24 @@ export interface Saving {
   recurring_id: string | null
 }
 
+export type BookKind = 'book' | 'video'
+export type VideoType = 'movie' | 'drama'
+
 export interface Book {
   id: string
   user_id: string
   cover_url: string | null
   title: string
   author: string | null
+  kind: BookKind
+  video_type: VideoType | null
   total_pages: number | null
   current_page: number
   status: BookStatus
   started_at: string | null
   finished_at: string | null
   rating: number | null
+  review: string | null
   shelf_order: number
 }
 

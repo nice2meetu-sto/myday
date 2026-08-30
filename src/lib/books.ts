@@ -1,7 +1,48 @@
 import { useQuery } from '@tanstack/react-query'
 import { sb } from './supabase'
 import { todayStr } from './format'
-import type { Book, BookQuote } from '../types'
+import type { Book, BookKind, BookQuote, VideoType } from '../types'
+
+// ---------------- 종류별 표현 (책 / 영상) ----------------
+type KindLike = { kind?: BookKind | null; video_type?: VideoType | null } | null | undefined
+
+export function isVideo(b: KindLike): boolean {
+  return b?.kind === 'video'
+}
+
+/** 단위 — 책은 쪽, 드라마는 화, 영화는 분(장면 위치) */
+export function unitOf(b: KindLike): string {
+  if (!isVideo(b)) return '쪽'
+  return b?.video_type === 'movie' ? '분' : '화'
+}
+
+/** 영화는 진행률 개념이 없어 진행 슬라이더를 쓰지 않는다 */
+export function hasProgress(b: KindLike): boolean {
+  return !(isVideo(b) && b?.video_type === 'movie')
+}
+
+export function kindIcon(b: KindLike): string {
+  if (!isVideo(b)) return '📖'
+  return b?.video_type === 'drama' ? '📺' : '🎬'
+}
+
+export function kindLabel(b: KindLike): string {
+  if (!isVideo(b)) return '책'
+  return b?.video_type === 'drama' ? '드라마' : '영화'
+}
+
+/** 만든이 라벨 — 책은 저자, 영상은 감독 */
+export function creatorLabel(b: KindLike): string {
+  return isVideo(b) ? '감독' : '저자'
+}
+
+/** 상태 동사 — 책은 읽다, 영상은 보다 */
+export function statusLabel(b: KindLike, s: 'want' | 'reading' | 'finished'): string {
+  const video = isVideo(b)
+  if (s === 'want') return video ? '보고 싶어요' : '읽고 싶어요'
+  if (s === 'reading') return video ? '보는 중' : '읽는 중'
+  return video ? '다 봤어요' : '다 읽었어요'
+}
 
 export function useBooks() {
   return useQuery({

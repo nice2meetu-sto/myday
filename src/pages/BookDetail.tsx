@@ -4,13 +4,133 @@ import { useQuery } from '@tanstack/react-query'
 import { Card, Label, EmptyState, inputCls, Field, SaveButton, SegmentedControl } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { BookCover } from '../components/CoverImg'
-import { useBook, useQuotes, updateBookPage, addQuote } from '../lib/books'
+import { useBook, useQuotes, updateBookPage, addQuote, isVideo, unitOf, kindLabel, hasProgress } from '../lib/books'
 import { deleteImage, uploadImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { todayStr, ymd, fmtSlash } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, ReadingLog } from '../types'
+
+// ---------------- 완료 시 평점 + 후기 시트 ----------------
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  // 별 하나당 왼쪽 절반 = 0.5, 오른쪽 절반 = 1.0
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((i) => {
+        const full = value >= i
+        const half = !full && value >= i - 0.5
+        return (
+          <span key={i} className="relative w-8 h-8 text-[26px] leading-8 select-none">
+            <span className="absolute inset-0 text-[#E2E0DA]">★</span>
+            {(full || half) && (
+              <span
+                className="absolute inset-0 text-[#E8B84B] overflow-hidden"
+                style={{ width: full ? '100%' : '50%' }}
+              >
+                ★
+              </span>
+            )}
+            <button
+              className="absolute left-0 top-0 w-1/2 h-full opacity-0"
+              onClick={() => onChange(value === i - 0.5 ? 0 : i - 0.5)}
+              aria-label={`${i - 0.5}점`}
+            />
+            <button
+              className="absolute right-0 top-0 w-1/2 h-full opacity-0"
+              onClick={() => onChange(value === i ? 0 : i)}
+              aria-label={`${i}점`}
+            />
+          </span>
+        )
+      })}
+      <b className="ml-1.5 text-[13px] tabular text-sub">{value ? value.toFixed(1) : '-'}</b>
+    </div>
+  )
+}
+
+function FinishSheet({
+  book,
+  open,
+  onClose,
+}: {
+  book: Book
+  open: boolean
+  onClose: () => void
+}) {
+  const invalidate = useInvalidate()
+  const video = isVideo(book)
+  const [rating, setRating] = useState(0)
+  const [review, setReview] = useState('')
+  const [date, setDate] = useState(todayStr())
+  const loaded = useRef(false)
+
+  if (open && !loaded.current) {
+    loaded.current = true
+    setRating(book.rating ?? 0)
+    setReview(book.review ?? '')
+    setDate(book.finished_at ?? todayStr())
+  }
+  if (!open && loaded.current) loaded.current = false
+
+  const save = async (withReview: boolean) => {
+    const patch: Record<string, unknown> = {
+      status: 'finished',
+      finished_at: date || todayStr(),
+      updated_at: new Date().toISOString(),
+    }
+    if (withReview) {
+      patch.rating = rating || null
+      patch.review = review.trim() || null
+    }
+    // 완료하면 진행도 100%로 (영화처럼 분량이 없으면 그대로)
+    if (book.total_pages) patch.current_page = book.total_pages
+    const { error } = await sb().from('books').update(patch).eq('id', book.id)
+    if (error) {
+      toastError('저장 실패', error)
+      return
+    }
+    invalidate(['books'])
+    toast(video ? '완주를 축하해요!' : '완독을 축하해요!')
+    onClose()
+  }
+
+  return (
+    <BottomSheet open={open} onClose={onClose} title={video ? '다 봤어요' : '다 읽었어요'}>
+      <Field label="평점">
+        <StarPicker value={rating} onChange={setRating} />
+      </Field>
+      <Field label="후기">
+        <textarea
+          className={inputCls}
+          rows={5}
+          placeholder={video ? '어떤 점이 좋았나요?' : '어떤 점이 좋았나요?'}
+          value={review}
+          onChange={(e) => setReview(e.target.value)}
+        />
+      </Field>
+      <Field label={video ? '다 본 날' : '다 읽은 날'}>
+        <input
+          type="date"
+          className={inputCls}
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+        />
+      </Field>
+      <div className="flex gap-2">
+        <button
+          className="flex-1 border-0 rounded-[14px] py-[13px] font-bold text-[13px] bg-[#F2F2EF]"
+          onClick={() => save(false)}
+        >
+          건너뛰기
+        </button>
+        <div className="flex-1">
+          <SaveButton onClick={() => save(true)} />
+        </div>
+      </div>
+    </BottomSheet>
+  )
+}
 
 // ---------------- 읽은 기록 목록/수정 시트 ----------------
 function timeHM(iso: string): string {
@@ -19,14 +139,16 @@ function timeHM(iso: string): string {
 }
 
 function ReadingLogsSheet({
-  bookId,
+  book,
   open,
   onClose,
 }: {
-  bookId: string
+  book: Book
   open: boolean
   onClose: () => void
 }) {
+  const bookId = book.id
+  const unit = unitOf(book)
   const invalidate = useInvalidate()
   const [editId, setEditId] = useState<string | null>(null)
   const [date, setDate] = useState('')
@@ -55,7 +177,7 @@ function ReadingLogsSheet({
     setPageInput(String(l.end_page))
   }
 
-  // 기록 변경 후 책의 현재 쪽수를 남은 기록의 최대값으로 재계산
+  // 기록 변경 후 현재 진행도를 남은 기록의 최대값으로 재계산
   const syncBookPage = async () => {
     const { data } = await sb().from('reading_logs').select('end_page').eq('book_id', bookId)
     if (data && data.length) {
@@ -67,7 +189,7 @@ function ReadingLogsSheet({
   const save = async (l: ReadingLog) => {
     const p = parseInt(pageInput, 10)
     if (!date || !p) {
-      toast('일자와 쪽수를 확인해주세요')
+      toast(`일자와 ${unit}수를 확인해주세요`)
       return
     }
     const { error } = await sb()
@@ -75,7 +197,7 @@ function ReadingLogsSheet({
       .update({
         log_date: date,
         end_page: p,
-        // 쪽수를 고치면 그날 읽은 양도 같은 만큼 보정
+        // 진행도를 고치면 그날 진행량도 같은 만큼 보정
         pages_read: Math.max(0, l.pages_read + (p - l.end_page)),
         created_at: new Date(`${date}T${time || '12:00'}:00`).toISOString(),
       })
@@ -102,8 +224,8 @@ function ReadingLogsSheet({
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="읽은 기록">
-      {!logs?.length && <EmptyState>아직 읽은 기록이 없어요</EmptyState>}
+    <BottomSheet open={open} onClose={onClose} title={isVideo(book) ? '본 기록' : '읽은 기록'}>
+      {!logs?.length && <EmptyState>아직 기록이 없어요</EmptyState>}
       {logs?.map((l) => (
         <div key={l.id} className="border-b border-line last:border-0">
           {editId === l.id ? (
@@ -125,7 +247,7 @@ function ReadingLogsSheet({
                     onChange={(e) => setTime(e.target.value)}
                   />
                 </Field>
-                <Field label="쪽수">
+                <Field label={`${unit}수`}>
                   <input
                     className={inputCls}
                     inputMode="numeric"
@@ -163,10 +285,14 @@ function ReadingLogsSheet({
               <span className="text-[11px] text-sub font-bold tabular flex-none w-20">
                 {fmtSlash(l.log_date)} {timeHM(l.created_at)}
               </span>
-              <span className="text-[13px] font-semibold flex-1 tabular">{l.end_page}쪽까지</span>
+              <span className="text-[13px] font-semibold flex-1 tabular">
+                {l.end_page}
+                {unit}까지
+              </span>
               {l.pages_read > 0 && (
                 <span className="text-[11px] text-[#9AA05E] font-bold tabular">
-                  +{l.pages_read}쪽
+                  +{l.pages_read}
+                  {unit}
                 </span>
               )}
               <span className="text-sub text-[12px] flex-none">›</span>
@@ -178,7 +304,7 @@ function ReadingLogsSheet({
   )
 }
 
-// ---------------- 책 정보 + 필사 수정 시트 ----------------
+// ---------------- 작품 정보 + 문장 수정 시트 ----------------
 function BookEditSheet({
   book,
   quotes,
@@ -249,7 +375,7 @@ function BookEditSheet({
         await deleteImage('covers', book.cover_url)
         patch.cover_url = r.path
       } catch (e) {
-        toastError('표지 업로드 실패', e)
+        toastError('이미지 업로드 실패', e)
       }
     } else if (coverMode === 'url') {
       if (coverUrl.trim() !== (book.cover_url ?? '')) {
@@ -263,7 +389,7 @@ function BookEditSheet({
       toastError('저장 실패', error)
       return
     }
-    // 변경된 필사만 갱신 (문장/쪽수/기록일)
+    // 변경된 문장만 갱신 (내용/위치/기록일)
     for (const q of quotes) {
       const edit = quoteEdits[q.id]
       if (!edit) continue
@@ -286,16 +412,16 @@ function BookEditSheet({
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="책 정보 수정">
+    <BottomSheet open={open} onClose={onClose} title="정보 수정">
       <Field label="제목">
         <input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} />
       </Field>
-      <Field label="작가">
+      <Field label={isVideo(book) ? '감독 · 출연' : '작가'}>
         <input className={inputCls} value={author} onChange={(e) => setAuthor(e.target.value)} />
       </Field>
       <div className="flex gap-3">
         <div className="w-[38%]">
-          <Field label="전체 쪽수">
+          <Field label={isVideo(book) ? '전체 화수' : '전체 쪽수'}>
             <input
               className={inputCls}
               inputMode="numeric"
@@ -315,7 +441,7 @@ function BookEditSheet({
           </Field>
         </div>
       </div>
-      <Field label="표지">
+      <Field label={isVideo(book) ? '포스터' : '표지'}>
         <SegmentedControl
           className="mb-2"
           options={[
@@ -353,7 +479,7 @@ function BookEditSheet({
         )}
       </Field>
       {quotes.length > 0 && (
-        <Field label="필사 수정">
+        <Field label={isVideo(book) ? '대사 수정' : '필사 수정'}>
           {quotes.map((q) => (
             <div key={q.id} className="bg-[#FAFAF8] rounded-xl p-2.5 mb-2">
               <textarea
@@ -371,7 +497,7 @@ function BookEditSheet({
                 <input
                   className={inputCls + ' !w-20'}
                   inputMode="numeric"
-                  placeholder="쪽수"
+                  placeholder={unitOf(book)}
                   value={quoteEdits[q.id]?.page ?? ''}
                   onChange={(e) =>
                     setQuoteEdits((prev) => ({
@@ -424,6 +550,7 @@ export default function BookDetailPage() {
   const [quotePage, setQuotePage] = useState('')
   const [editOpen, setEditOpen] = useState(false)
   const [logsOpen, setLogsOpen] = useState(false)
+  const [finishOpen, setFinishOpen] = useState(false)
 
   useEffect(() => {
     if (book) setPage(book.current_page)
@@ -433,6 +560,8 @@ export default function BookDetailPage() {
 
   const total = book.total_pages ?? 0
   const pct = total ? Math.min(100, Math.round((page / total) * 100)) : 0
+  const video = isVideo(book)
+  const unit = unitOf(book)
 
   const commitPage = async (v: number) => {
     if (v === book.current_page) return
@@ -443,7 +572,7 @@ export default function BookDetailPage() {
       return
     }
     invalidate(['books', 'reading_logs'])
-    toast('쪽수를 저장했어요')
+    toast(video ? '진행도를 저장했어요' : '쪽수를 저장했어요')
   }
 
   const saveQuote = async () => {
@@ -457,35 +586,26 @@ export default function BookDetailPage() {
     invalidate(['quotes'])
     setQuoteText('')
     setQuotePage('')
-    toast('필사를 저장했어요')
+    toast('저장했어요')
   }
 
   const changeStatus = async () => {
     if (book.status === 'want') {
       await sb().from('books').update({ status: 'reading', started_at: todayStr() }).eq('id', book.id)
-      toast('읽기 시작!')
+      toast(video ? '보기 시작!' : '읽기 시작!')
     } else if (book.status === 'reading') {
-      const ratingStr = prompt('완독! 평점을 남겨보세요 (0~5, 예: 4.5)', '')
-      const rating = ratingStr ? Math.min(5, Math.max(0, parseFloat(ratingStr))) : null
-      await sb()
-        .from('books')
-        .update({
-          status: 'finished',
-          finished_at: todayStr(),
-          rating: Number.isFinite(rating) ? rating : null,
-          current_page: total || book.current_page,
-        })
-        .eq('id', book.id)
-      toast('완독을 축하해요!')
+      // 완료 처리는 평점 + 후기 시트에서
+      setFinishOpen(true)
+      return
     } else {
       await sb().from('books').update({ status: 'reading', finished_at: null }).eq('id', book.id)
-      toast('다시 읽는 중으로 바꿨어요')
+      toast(video ? '다시 보는 중으로 바꿨어요' : '다시 읽는 중으로 바꿨어요')
     }
     invalidate(['books'])
   }
 
   const removeBook = async () => {
-    if (!confirm(`'${book.title}'을(를) 삭제할까요? 필사와 기록도 함께 삭제됩니다.`)) return
+    if (!confirm(`'${book.title}'을(를) 삭제할까요? 문장과 기록도 함께 삭제됩니다.`)) return
     await deleteImage('covers', book.cover_url)
     await sb().from('books').delete().eq('id', book.id)
     invalidate(['books', 'quotes', 'reading_logs'])
@@ -494,7 +614,7 @@ export default function BookDetailPage() {
 
   const deleteQuote = (id: string) => {
     const timer = setTimeout(async () => {
-      if (confirm('이 필사를 삭제할까요?')) {
+      if (confirm('이 문장을 삭제할까요?')) {
         await sb().from('book_quotes').delete().eq('id', id)
         invalidate(['quotes'])
       }
@@ -508,8 +628,18 @@ export default function BookDetailPage() {
     document.addEventListener('pointermove', clear)
   }
 
-  const statusLabel =
-    book.status === 'want' ? '읽기 시작' : book.status === 'reading' ? '다 읽었어요' : '다시 읽기'
+  const actionLabel =
+    book.status === 'want'
+      ? video
+        ? '보기 시작'
+        : '읽기 시작'
+      : book.status === 'reading'
+        ? video
+          ? '다 봤어요'
+          : '다 읽었어요'
+        : video
+          ? '다시 보기'
+          : '다시 읽기'
 
   return (
     <div>
@@ -532,7 +662,8 @@ export default function BookDetailPage() {
         </button>
       </div>
       <BookEditSheet book={book} quotes={quotes ?? []} open={editOpen} onClose={() => setEditOpen(false)} />
-      <ReadingLogsSheet bookId={book.id} open={logsOpen} onClose={() => setLogsOpen(false)} />
+      <ReadingLogsSheet book={book} open={logsOpen} onClose={() => setLogsOpen(false)} />
+      <FinishSheet book={book} open={finishOpen} onClose={() => setFinishOpen(false)} />
 
       <div className="flex gap-4 mb-3">
         <BookCover title={book.title} coverUrl={book.cover_url} className="w-[110px] h-[164px] rounded-[10px] flex-none" />
@@ -540,7 +671,8 @@ export default function BookDetailPage() {
           <div className="text-[15px] font-extrabold leading-snug">{book.title}</div>
           {book.author && <div className="text-[12px] text-sub font-semibold mt-1">{book.author}</div>}
           <div className="text-[11px] text-sub mt-2 leading-relaxed">
-            {total ? `${total}쪽` : ''}
+            {kindLabel(book)}
+            {total ? ` · ${total}${unit}` : ''}
             {book.started_at && (
               <>
                 <br />
@@ -550,7 +682,7 @@ export default function BookDetailPage() {
             {book.finished_at && (
               <>
                 <br />
-                {book.finished_at} 완독
+                {book.finished_at} {video ? '완주' : '완독'}
               </>
             )}
             {book.rating != null && (
@@ -564,8 +696,16 @@ export default function BookDetailPage() {
               className="border-0 bg-acc text-white rounded-xl px-4 py-2 text-[11px] font-bold"
               onClick={changeStatus}
             >
-              {statusLabel}
+              {actionLabel}
             </button>
+            {book.status === 'finished' && (
+              <button
+                className="border-0 bg-[#F2F2EF] text-ink rounded-xl px-3 py-2 text-[11px] font-bold"
+                onClick={() => setFinishOpen(true)}
+              >
+                후기 수정
+              </button>
+            )}
             {book.status === 'reading' && (
               <button
                 className="border-0 bg-[#F2F2EF] text-ink rounded-xl px-3 py-2 text-[11px] font-bold"
@@ -575,23 +715,36 @@ export default function BookDetailPage() {
                     .update({ status: 'want', started_at: null })
                     .eq('id', book.id)
                   invalidate(['books'])
-                  toast('읽고 싶은 책으로 옮겼어요')
+                  toast(video ? '보고 싶은 것으로 옮겼어요' : '읽고 싶은 책으로 옮겼어요')
                 }}
               >
-                읽고 싶어요로
+                {video ? '보고 싶어요로' : '읽고 싶어요로'}
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {book.status !== 'want' && (
+      {/* 후기 */}
+      {book.review && (
+        <Card className="mb-3 cursor-pointer" onClick={() => setFinishOpen(true)}>
+          <div className="flex justify-between items-baseline mb-1.5">
+            <Label>후기</Label>
+            {book.rating != null && <b className="text-[13px] text-[#E8B84B]">★ {book.rating}</b>}
+          </div>
+          <p className="m-0 text-[13px] leading-[1.7] text-[#444] whitespace-pre-wrap">
+            {book.review}
+          </p>
+        </Card>
+      )}
+
+      {book.status !== 'want' && hasProgress(book) && (
         <Card className="mb-3 cursor-pointer" onClick={() => setLogsOpen(true)}>
           <div className="flex justify-between items-baseline">
-            <Label>읽은 쪽수</Label>
+            <Label>{video ? '본 화수' : '읽은 쪽수'}</Label>
             <b className="text-[13px] tabular">
               {page}
-              {total ? ` / ${total}쪽 · ${pct}%` : '쪽'}
+              {total ? ` / ${total}${unit} · ${pct}%` : unit}
             </b>
           </div>
           {total > 0 ? (
@@ -623,11 +776,11 @@ export default function BookDetailPage() {
       )}
 
       <Card className="mb-3">
-        <Label className="mb-2">기억에 남는 문장</Label>
+        <Label className="mb-2">{video ? '기억에 남는 대사' : '기억에 남는 문장'}</Label>
         <textarea
           className={inputCls}
           rows={3}
-          placeholder="기억에 남는 문장을 적어두세요"
+          placeholder={video ? '기억에 남는 대사를 적어두세요' : '기억에 남는 문장을 적어두세요'}
           value={quoteText}
           onChange={(e) => setQuoteText(e.target.value)}
         />
@@ -635,7 +788,7 @@ export default function BookDetailPage() {
           <input
             className={inputCls + ' !w-24'}
             inputMode="numeric"
-            placeholder="쪽수"
+            placeholder={unit}
             value={quotePage}
             onChange={(e) => setQuotePage(e.target.value.replace(/[^0-9]/g, ''))}
           />
@@ -644,7 +797,7 @@ export default function BookDetailPage() {
             onClick={saveQuote}
             disabled={!quoteText.trim()}
           >
-            필사 저장
+            저장
           </button>
         </div>
       </Card>
@@ -658,7 +811,7 @@ export default function BookDetailPage() {
         >
           <p className="m-0 font-serif text-[13px] leading-[1.7] text-[#3d3628]">“{q.content}”</p>
           <div className="mt-2.5 flex justify-between text-[11px] font-semibold text-[#9a8b70]">
-            <span>{q.page ? `${q.page}쪽` : ''}</span>
+            <span>{q.page ? `${q.page}${unit}` : ''}</span>
             <span>
               {new Date(q.created_at).getMonth() + 1}월 {new Date(q.created_at).getDate()}일
             </span>

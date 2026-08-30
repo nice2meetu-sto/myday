@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 const TABS = [
   { path: '/', label: '홈' },
   { path: '/expense', label: '소비' },
-  { path: '/hobby', label: '독서' },
+  { path: '/hobby', label: '후기' },
   { path: '/todo', label: '할일' },
   { path: '/diary', label: '일기' },
 ]

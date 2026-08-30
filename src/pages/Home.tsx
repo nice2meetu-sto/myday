@@ -9,7 +9,7 @@ import { TodoSheet } from './Todo'
 import { DiarySheet } from './Diary'
 import { DateStrip } from '../components/DateStrip'
 import { BookCover, DiaryPhoto } from '../components/CoverImg'
-import { useBooks, updateBookPage, addQuote } from '../lib/books'
+import { useBooks, updateBookPage, addQuote, isVideo, unitOf, kindIcon, hasProgress } from '../lib/books'
 import { pendingConfirmations } from '../lib/recurrence'
 import { useInvalidate, useUserId, useCategories, catName, catIcon } from '../lib/queries'
 import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, dayStartISO, nextDayStartISO, localDateOf, todoCompare } from '../lib/format'
@@ -277,7 +277,7 @@ function DayTodoCard({ date, onOpen }: { date: string; onOpen: () => void }) {
   )
 }
 
-// ---------------- 읽는 중 책 카드 + 시트 ----------------
+// ---------------- 보는 중 카드 + 시트 ----------------
 function ReadingCard({ date }: { date: string }) {
   const userId = useUserId()
   const invalidate = useInvalidate()
@@ -312,8 +312,8 @@ function ReadingCard({ date }: { date: string }) {
   if (!book)
     return (
       <Card className="h-[130px] overflow-hidden">
-        <Label>읽는 중</Label>
-        <EmptyState>읽는 중인 책이 없어요</EmptyState>
+        <Label>보는 중</Label>
+        <EmptyState>진행 중인 게 없어요</EmptyState>
       </Card>
     )
 
@@ -343,7 +343,7 @@ function ReadingCard({ date }: { date: string }) {
       return
     }
     invalidate(['books', 'reading_logs', 'quotes'])
-    toast(quoteInput.trim() ? '쪽수와 필사를 저장했어요' : '쪽수를 저장했어요')
+    toast(quoteInput.trim() ? '진행도와 문장을 저장했어요' : '진행도를 저장했어요')
     setQuoteInput('')
     setQuotePage('')
     setOpen(false)
@@ -360,14 +360,15 @@ function ReadingCard({ date }: { date: string }) {
           setOpen(true)
         }}
       >
-        <Label>읽는 중</Label>
+        <Label>{isVideo(book) ? '보는 중' : '읽는 중'}</Label>
         <div className="flex gap-2.5 mt-1 items-center">
           <BookCover title={book.title} coverUrl={book.cover_url} thumb className="w-9 h-[54px] rounded-md flex-none shadow-card" />
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-bold leading-snug truncate">{book.title}</div>
             <div className="text-[11px] text-sub mt-1 tabular">
-              {book.current_page}
-              {book.total_pages ? ` / ${book.total_pages}쪽` : '쪽'}
+              {hasProgress(book)
+                ? `${book.current_page}${book.total_pages ? ` / ${book.total_pages}${unitOf(book)}` : unitOf(book)}`
+                : kindIcon(book)}
             </div>
           </div>
         </div>
@@ -386,7 +387,7 @@ function ReadingCard({ date }: { date: string }) {
               onChange={(e) => setLogDate(e.target.value)}
             />
           </Field>
-          <Field label="읽은 쪽수">
+          <Field label={isVideo(book) ? '본 화수' : '읽은 쪽수'}>
             <input
               className={inputCls}
               inputMode="numeric"
@@ -395,7 +396,7 @@ function ReadingCard({ date }: { date: string }) {
             />
           </Field>
         </div>
-        <Field label="필사 문장 (선택)">
+        <Field label={isVideo(book) ? '기억에 남는 대사 (선택)' : '필사 문장 (선택)'}>
           <textarea
             className={inputCls}
             rows={3}
