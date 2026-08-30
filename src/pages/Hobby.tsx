@@ -721,7 +721,6 @@ const PAGE_SIZE = 20
 function QuotesView() {
   const { data: books } = useBooks()
   const invalidate = useInvalidate()
-  const [mode, setMode] = useState<'quote' | 'review'>('quote')
   const [filter, setFilter] = useState<string | null>(null)
   const [limit, setLimit] = useState(PAGE_SIZE)
   const { data: quotes } = useQuotes(filter ?? undefined)
@@ -748,34 +747,9 @@ function QuotesView() {
 
   const booksWithQuotes = (books ?? []).filter((b) => (quotes ?? []).some((q) => q.book_id === b.id) || filter === b.id)
 
-  if (mode === 'review')
-    return (
-      <div>
-        <SegmentedControl
-          className="mb-3.5 mt-0.5"
-          options={[
-            { value: 'quote', label: '문장' },
-            { value: 'review', label: '후기' },
-          ]}
-          value={mode}
-          onChange={setMode}
-        />
-        <ReviewList />
-      </div>
-    )
-
   return (
     <div>
-      <SegmentedControl
-        className="mb-3 mt-0.5"
-        options={[
-          { value: 'quote', label: '문장' },
-          { value: 'review', label: '후기' },
-        ]}
-        value={mode}
-        onChange={setMode}
-      />
-      <div className="flex gap-1.5 overflow-x-auto pb-3 no-scrollbar">
+      <div className="flex gap-1.5 overflow-x-auto pb-3 mt-1 no-scrollbar">
         <span
           className={`flex-none rounded-[10px] px-3 py-2 text-[11px] font-bold cursor-pointer ${!filter ? 'bg-acc text-white' : 'bg-white shadow-card'}`}
           onClick={() => setFilter(null)}
@@ -825,26 +799,30 @@ function QuotesView() {
   )
 }
 
+const VIEWS = ['shelf', 'stats', 'quotes', 'reviews'] as const
+type HobbyView = (typeof VIEWS)[number]
+
 export default function HobbyPage() {
-  const [view, setView] = useState<'shelf' | 'stats' | 'quotes'>('shelf')
+  const [view, setView] = useState<HobbyView>('shelf')
   const [addOpen, setAddOpen] = useState(false)
 
-  // 탭바에서 후기 탭 재탭 → 보관함/통계/문장 순환
+  // 탭바에서 문화 탭 재탭 → 보관함/통계/문장/후기 순환
   useEffect(() => {
     const onRetap = () =>
-      setView((v) => (v === 'shelf' ? 'stats' : v === 'stats' ? 'quotes' : 'shelf'))
+      setView((v) => VIEWS[(VIEWS.indexOf(v) + 1) % VIEWS.length])
     window.addEventListener('tab-retap:/hobby', onRetap)
     return () => window.removeEventListener('tab-retap:/hobby', onRetap)
   }, [])
   return (
     <div>
-      <PageHead title="후기" right={<AddButton onClick={() => setAddOpen(true)} />} />
+      <PageHead title="문화" right={<AddButton onClick={() => setAddOpen(true)} />} />
       <SegmentedControl
         className="mb-3.5"
         options={[
           { value: 'shelf', label: '보관함' },
           { value: 'stats', label: '통계' },
           { value: 'quotes', label: '문장' },
+          { value: 'reviews', label: '후기' },
         ]}
         value={view}
         onChange={setView}
@@ -852,6 +830,7 @@ export default function HobbyPage() {
       {view === 'shelf' && <ShelfView />}
       {view === 'stats' && <StatsView />}
       {view === 'quotes' && <QuotesView />}
+      {view === 'reviews' && <ReviewList />}
       <AddBookSheet open={addOpen} onClose={() => setAddOpen(false)} />
     </div>
   )
