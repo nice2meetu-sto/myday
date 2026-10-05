@@ -1,18 +1,68 @@
 name: Supabase Keepalive
 
-# 무료 티어 7일 미접속 정지 방지 — 3일마다 가벼운 SELECT
+# 무료 티어 미접속 정지 방지 — 2일마다 가벼운 SELECT 한 번.
+# REST 요청이 실제 Postgres 쿼리를 일으켜 '활동'으로 기록된다.
+# (정지 기준은 7일이라 2일 주기면 한두 번 실패해도 여유가 있다)
 on:
   schedule:
-    - cron: '0 3 */3 * *'
+    - cron: '0 3 */2 * *'
   workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Supabase
+        id: ping
         run: |
-          curl -sf "https://ukdqgghzxwbyiqometsp.supabase.co/rest/v1/notes?select=id&limit=1" \
-            -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
-            -o /dev/null -w "status: %{http_code}\n"
+          URL="https://ukdqgghzxwbyiqometsp.supabase.co/rest/v1/notes?select=id&limit=1"
+          code=000
+          for i in 1 2 3; do
+            code=$(curl -s -m 20 -o /tmp/body.txt -w '%{http_code}' \
+              -H "apikey: ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+              -H "Authorization: Bearer ${{ secrets.VITE_SUPABASE_ANON_KEY }}" \
+              "$URL" 2>/tmp/err.txt) || true
+            echo "시도 $i/3 → HTTP $code"
+            if [ "$code" -ge 200 ] && [ "$code" -lt 300 ]; then
+              echo "✅ keepalive 성공"
+              exit 0
+            fi
+            if [ "$i" -lt 3 ]; then
+              sleep 20
+            fi
+          done
+          # 여기까지 왔으면 3회 모두 실패 — 진단 정보를 남긴다
+          echo "::group::진단"
+          echo "마지막 HTTP 코드: $code  (000 = 응답 없음/DNS·연결 실패)"
+          echo "curl stderr: $(cat /tmp/err.txt 2>/dev/null | head -c 300)"
+          echo "응답 본문: $(head -c 300 /tmp/body.txt 2>/dev/null)"
+          echo "DNS: $(getent hosts ukdqgghzxwbyiqometsp.supabase.co || echo '해석 실패 → 프로젝트가 정지/삭제됐을 가능성')"
+          echo "::endgroup::"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          exit 1
+
+      # 조용히 실패해서 몇 주째 모르고 지나가는 일이 없도록 이슈로 알린다.
+      # 이미 열린 알림 이슈가 있으면 중복 생성하지 않는다.
+      - name: 실패 시 이슈로 알림
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CODE: ${{ steps.ping.outputs.code }}
+        run: |
+          OPEN=$(curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/issues?state=open&labels=keepalive" \
+            | grep -c '"number"' || true)
+          if [ "$OPEN" != "0" ]; then
+            echo "이미 열린 keepalive 이슈가 있어 건너뜁니다."
+            exit 0
+          fi
+          BODY="Supabase keepalive 핑이 3회 연속 실패했습니다.\n\n- 마지막 HTTP 코드: \`${CODE:-000}\`\n- 실패한 실행: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\n**확인할 것**\n1. Supabase 대시보드에서 프로젝트가 일시정지(paused) 상태인지 → 정지됐다면 Restore\n2. \`VITE_SUPABASE_ANON_KEY\` 시크릿이 유효한지 (만료/교체 여부)\n3. HTTP 코드가 \`000\`이면 DNS·연결 실패 → 프로젝트 정지 또는 삭제 가능성\n\n복구 후 이 이슈를 닫으면 다음 실패 때 다시 알림이 생성됩니다."
+          curl -s -X POST -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues" \
+            -d "$(printf '{"title":"⚠️ Supabase keepalive 실패","labels":["keepalive"],"body":"%s"}' "$BODY")" \
+            -o /dev/null -w "이슈 생성: %{http_code}\n"
