@@ -12,7 +12,7 @@ import { BookCover, DiaryPhoto } from '../components/CoverImg'
 import { useBooks, updateBookPage, addQuote, isVideo, unitOf, kindIcon, hasProgress } from '../lib/books'
 import { pendingConfirmations } from '../lib/recurrence'
 import { useInvalidate, useUserId, useCategories, catName, catIcon } from '../lib/queries'
-import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, dayStartISO, nextDayStartISO, localDateOf, todoCompare } from '../lib/format'
+import { fmt, ymd, todayStr, fmtTimeHM, fmtDot, fmtSlash, dayStartISO, nextDayStartISO, localDateOf, todoCompare } from '../lib/format'
 import { sb } from '../lib/supabase'
 import { toast, toastError } from '../stores/ui'
 import type { Book, BookQuote, Diary, MoneyEntry, Todo } from '../types'
@@ -235,6 +235,27 @@ function DayTodoCard({ date, onOpen }: { date: string; onOpen: () => void }) {
       return data as Todo[]
     },
   })
+  // 그날 배정된 할일이 아예 없으면(다 한 경우는 제외) 앞으로 가까운 순으로 4개
+  const empty = todos?.length === 0 && date >= todayStr()
+  const { data: upcoming } = useQuery({
+    queryKey: ['todos', 'upcoming', date],
+    enabled: empty,
+    queryFn: async () => {
+      const { data, error } = await sb()
+        .from('todos')
+        .select('*')
+        .eq('is_skipped', false)
+        .eq('is_done', false)
+        .gt('due_date', date)
+        .order('due_date')
+        .order('due_time', { nullsFirst: true })
+        .order('sort_order')
+        .limit(4)
+      if (error) throw error
+      return data as Todo[]
+    },
+  })
+
   const toggle = async (t: Todo) => {
     await sb()
       .from('todos')
@@ -244,14 +265,34 @@ function DayTodoCard({ date, onOpen }: { date: string; onOpen: () => void }) {
   }
   const list = (todos ?? []).slice().sort(todoCompare)
   const allDone = (todos ?? []).length > 0 && (todos ?? []).every((t) => t.is_done)
+  const showUpcoming = empty && !!upcoming?.length
   return (
     <Card onClick={onOpen} className="!p-3.5 h-[175px] flex flex-col overflow-hidden">
       <Label className="mb-2">
-        {isToday ? '오늘 할일' : `${fmtDot(date)} 할일`}
+        {showUpcoming ? '다가오는 할일' : isToday ? '오늘 할일' : `${fmtDot(date)} 할일`}
         {allDone && isToday && <span className="ml-1 text-[#9AA05E]">· 다 했어요 🎉</span>}
       </Label>
       <div className="flex-1 overflow-y-auto no-scrollbar">
-        {!todos?.length && <div className="text-[11px] text-sub py-1">탭해서 추가하기</div>}
+        {!todos?.length && !showUpcoming && (
+          <div className="text-[11px] text-sub py-1">탭해서 추가하기</div>
+        )}
+        {showUpcoming &&
+          upcoming!.map((t) => (
+            <div
+              key={t.id}
+              className="rounded-xl px-[11px] py-[9px] mb-1.5 text-[11px] font-semibold leading-snug cursor-pointer bg-[#F6F6F3] flex items-center gap-1.5"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggle(t)
+              }}
+            >
+              <span className="text-sub text-[10px] flex-none tabular font-bold">
+                {fmtSlash(t.due_date!)}
+              </span>
+              {t.template_id && <span className="text-[#9AA05E] text-[9px]">↻</span>}
+              <span className="flex-1 min-w-0">{t.content}</span>
+            </div>
+          ))}
         {list.map((t) => (
           <div
             key={t.id}
