@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Card, Label, EmptyState, inputCls, Field, SaveButton, SegmentedControl } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { BookCover } from '../components/CoverImg'
-import { useBook, useQuotes, updateBookPage, addQuote, isVideo, unitOf, kindLabel, hasProgress } from '../lib/books'
+import { useBook, useQuotes, updateBookPage, addQuote, isVideo, unitOf, kindLabel, hasProgress, coverSearchUrl } from '../lib/books'
 import { deleteImage, uploadImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { todayStr, ymd, fmtSlash } from '../lib/format'
@@ -494,12 +494,28 @@ function BookEditSheet({
           </>
         )}
         {coverMode === 'url' && (
-          <input
-            className={inputCls}
-            placeholder="https://..."
-            value={coverUrl}
-            onChange={(e) => setCoverUrl(e.target.value)}
-          />
+          <>
+            {/* 갤러리보다 검색해서 링크로 넣는 경우가 많아 바로 검색 버튼을 둔다 */}
+            <button
+              className="w-full border border-black/10 rounded-xl py-2.5 text-[12px] font-bold bg-white mb-2"
+              onClick={() => {
+                const t = title.trim() || book.title
+                window.open(
+                  coverSearchUrl(t, author, book.kind, book.video_type),
+                  '_blank',
+                  'noopener',
+                )
+              }}
+            >
+              🔍 구글에서 {isVideo(book) ? '포스터' : '표지'} 검색
+            </button>
+            <input
+              className={inputCls}
+              placeholder="https://..."
+              value={coverUrl}
+              onChange={(e) => setCoverUrl(e.target.value)}
+            />
+          </>
         )}
       </Field>
       {quotes.length > 0 && (

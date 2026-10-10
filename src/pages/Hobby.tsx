@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { Card, Label, SegmentedControl, AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, ChipRow, PeriodNav, popIn } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { BookCover, coverFallbackColor } from '../components/CoverImg'
-import { useBooks, useQuotes, kindIcon, kindLabel, unitOf, logUnitOf, hasProgress, isVideo } from '../lib/books'
+import { useBooks, useQuotes, kindIcon, kindLabel, unitOf, logUnitOf, hasProgress, isVideo, coverSearchUrl } from '../lib/books'
 import { uploadImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { ymd, todayStr, DAY_NAMES, dayStartISO, nextDayStartISO, localDateOf } from '../lib/format'
@@ -151,6 +151,23 @@ function AddBookSheet({ open, onClose }: { open: boolean; onClose: () => void })
           </>
         ) : (
           <>
+            {/* 갤러리보다 검색해서 링크로 넣는 경우가 많아 바로 검색 버튼을 둔다 */}
+            <button
+              className="w-full border border-black/10 rounded-xl py-2.5 text-[12px] font-bold bg-white mb-2"
+              onClick={() => {
+                if (!title.trim()) {
+                  toast('제목을 먼저 입력해주세요')
+                  return
+                }
+                window.open(
+                  coverSearchUrl(title, author, meta.kind, meta.video_type),
+                  '_blank',
+                  'noopener',
+                )
+              }}
+            >
+              🔍 구글에서 {isVid ? '포스터' : '표지'} 검색
+            </button>
             <input
               className={inputCls}
               placeholder="https://..."

@@ -27,6 +27,19 @@ export function logUnitOf(b: KindLike): string {
   return b?.video_type === 'movie' ? '편' : '화'
 }
 
+/** 표지·포스터 이미지를 링크로 가져올 때 쓰는 구글 이미지 검색 주소 */
+export function coverSearchUrl(
+  title: string,
+  author: string | null | undefined,
+  kind: BookKind,
+  videoType?: VideoType | null,
+): string {
+  const what =
+    kind === 'video' ? (videoType === 'drama' ? '드라마 포스터' : '영화 포스터') : '책 표지'
+  const q = [title.trim(), (author ?? '').trim(), what].filter(Boolean).join(' ')
+  return `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(q)}`
+}
+
 export function kindIcon(b: KindLike): string {
   if (!isVideo(b)) return '📖'
   return b?.video_type === 'drama' ? '📺' : '🎬'
