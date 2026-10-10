@@ -644,7 +644,7 @@ export default function DiaryPage() {
           onClick={() => setMoodOpen(!moodOpen)}
           aria-label="기분으로 보기"
         >
-          {moodFilter != null ? moodOf(moodFilter)!.emoji : '🔎'}
+          {moodFilter != null ? moodOf(moodFilter)!.emoji : '💭'}
         </button>
       </div>
       {moodOpen && (
