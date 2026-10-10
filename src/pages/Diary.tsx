@@ -14,13 +14,17 @@ import type { Diary } from '../types'
 
 const PAGE = 30
 
-/** 기분 5단계 — 색은 앱에서 이미 쓰는 팔레트로 맞췄다 */
-export const MOODS: { v: number; emoji: string; label: string; color: string }[] = [
-  { v: 5, emoji: '😄', label: '아주 좋음', color: '#F3CE62' },
-  { v: 4, emoji: '🙂', label: '좋음', color: '#C7CE9A' },
-  { v: 3, emoji: '😐', label: '보통', color: '#D8D1C3' },
-  { v: 2, emoji: '😔', label: '별로', color: '#A3C4EB' },
-  { v: 1, emoji: '😣', label: '힘듦', color: '#D3968C' },
+/**
+ * 기분 5종 — 색은 앱 팔레트로 맞췄다.
+ * v 는 예전 5단계(아주 좋음~힘듦)에 쓰던 값을 그대로 이어받는다.
+ * (5 아주 좋음→행복, 4 좋음→감동, 3 보통→보통, 2 별로→슬픔, 1 힘듦→멘붕)
+ */
+export const MOODS: { v: number; emoji: string; label: string; color: string; good?: boolean }[] = [
+  { v: 5, emoji: '😊', label: '행복', color: '#F3CE62', good: true },
+  { v: 3, emoji: '😐', label: '보통', color: '#C7CE9A' },
+  { v: 2, emoji: '😢', label: '슬픔', color: '#A3C4EB' },
+  { v: 1, emoji: '🤯', label: '멘붕', color: '#D9786A' },
+  { v: 4, emoji: '🥹', label: '감동', color: '#C7976F', good: true },
 ]
 export const moodOf = (v: number | null | undefined) => MOODS.find((m) => m.v === v)
 
@@ -492,7 +496,7 @@ function DiaryStats({
     return m
   }, [monthDiaries])
   const moodTotal = [...moodCounts.values()].reduce((a, b) => a + b, 0)
-  const goodDays = (moodCounts.get(5) ?? 0) + (moodCounts.get(4) ?? 0)
+  const goodDays = MOODS.filter((m) => m.good).reduce((s, m) => s + (moodCounts.get(m.v) ?? 0), 0)
 
   return (
     <div className="mt-3 pt-3 border-t border-line">
