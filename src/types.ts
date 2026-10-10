@@ -142,6 +142,7 @@ export interface Diary {
   entry_date: string
   entry_time: string | null
   content: string | null
+  mood: number | null
   created_at: string
 }
 

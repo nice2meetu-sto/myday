@@ -202,10 +202,18 @@ create table if not exists diaries (
   entry_date date not null,
   entry_time time,
   content text,
+  mood smallint check (mood between 1 and 5),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
 create index if not exists diaries_user_date on diaries (user_id, entry_date desc);
+-- 기분 기록 (1 힘듦 ~ 5 아주 좋음)
+alter table diaries add column if not exists mood smallint;
+do $$
+begin
+  alter table diaries add constraint diaries_mood_chk check (mood between 1 and 5);
+exception when duplicate_object then null;
+end $$;
 
 -- 월 예산
 create table if not exists budgets (
