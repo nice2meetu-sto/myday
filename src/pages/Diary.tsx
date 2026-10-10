@@ -23,8 +23,8 @@ export const MOODS: { v: number; emoji: string; label: string; color: string; go
   { v: 5, emoji: '😊', label: '행복', color: '#F3CE62', good: true },
   { v: 3, emoji: '😐', label: '보통', color: '#C7CE9A' },
   { v: 2, emoji: '😢', label: '슬픔', color: '#A3C4EB' },
-  { v: 1, emoji: '🤯', label: '멘붕', color: '#D9786A' },
-  { v: 4, emoji: '🥹', label: '감동', color: '#C7976F', good: true },
+  { v: 1, emoji: '🤯', label: '멘붕', color: '#D1CDC6' },
+  { v: 4, emoji: '🥹', label: '감동', color: '#E9A8B5', good: true },
 ]
 export const moodOf = (v: number | null | undefined) => MOODS.find((m) => m.v === v)
 
