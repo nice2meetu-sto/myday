@@ -38,7 +38,7 @@ function useTodosMatrix() {
     queryKey: ['todos', 'matrix', today],
     queryFn: async () => {
       // 기간(미래 포함) 상관없이 미완료는 전부 표시, 완료는 오늘 것만.
-      // 단 반복 인스턴스는 오늘까지만 (60일치 미래분이 사분면을 채우지 않게)
+      // 반복 인스턴스도 미래분까지 모두 보여준다 (미리 확인할 수 있게)
       const { data, error } = await sb()
         .from('todos')
         .select('*')
@@ -48,9 +48,7 @@ function useTodosMatrix() {
         .order('sort_order')
         .order('created_at')
       if (error) throw error
-      return (data as Todo[]).filter(
-        (t) => !(t.template_id && t.due_date && t.due_date > today),
-      )
+      return data as Todo[]
     },
   })
 }
