@@ -372,6 +372,7 @@ function CategoryEdit() {
 
 // ---------------- 고정지출 관리 ----------------
 function freqLabel(r: RecurringRule): string {
+  if (r.freq === 'manual') return '수동'
   const iv = r.interval_n > 1 ? `${r.interval_n}` : ''
   if (r.freq === 'weekly')
     return `${iv ? `${iv}주마다` : '매주'} ${['일', '월', '화', '수', '목', '금', '토'][r.byweekday ?? 0]}요일`
@@ -403,7 +404,7 @@ function RecurringEdit() {
   const [major, setMajor] = useState<string | null>(null)
   const [minor, setMinor] = useState<string | null>(null)
   const [pm, setPm] = useState<string | null>(null)
-  const [freq, setFreq] = useState<'weekly' | 'monthly' | 'yearly'>('monthly')
+  const [freq, setFreq] = useState<'weekly' | 'monthly' | 'yearly' | 'manual'>('monthly')
   const [intervalN, setIntervalN] = useState('1')
   const [monthday, setMonthday] = useState('1')
   const [lastDay, setLastDay] = useState(false)
@@ -474,8 +475,13 @@ function RecurringEdit() {
       minor_category_id: kind === 'saving' ? null : minor,
       payment_method_id: kind === 'expense' ? pm : null,
       freq,
-      interval_n: parseInt(intervalN, 10) || 1,
-      bymonthday: freq === 'weekly' ? null : lastDay ? -1 : parseInt(monthday, 10) || 1,
+      interval_n: freq === 'manual' ? 1 : parseInt(intervalN, 10) || 1,
+      bymonthday:
+        freq === 'manual' || freq === 'weekly'
+          ? null
+          : lastDay
+            ? -1
+            : parseInt(monthday, 10) || 1,
       bymonth: freq === 'yearly' ? parseInt(bymonth, 10) || 1 : null,
       byweekday: freq === 'weekly' ? weekday : null,
       starts_on: startsOn,
@@ -498,9 +504,9 @@ function RecurringEdit() {
       }
       await refreshFuture(editing.id, editing.kind)
     }
-    invalidate(['recurring_rules', 'money', 'summary'])
+    invalidate(['recurring_rules', 'money', 'summary', 'recurring_manual_last'])
     setEditing(null)
-    toast('저장했어요 · 미래 인스턴스만 갱신됩니다')
+    toast(freq === 'manual' ? '저장했어요 · 추가 버튼으로 기록해요' : '저장했어요 · 미래 인스턴스만 갱신됩니다')
   }
 
   const toggleActive = async (r: RecurringRule) => {
@@ -541,8 +547,68 @@ function RecurringEdit() {
   const active = list.filter((r) => r.is_active)
   const inactive = list.filter((r) => !r.is_active)
 
+  // 수동 규칙의 마지막 기록일 (중복 등록 방지용 안내)
+  const manualIds = list.filter((r) => r.freq === 'manual').map((r) => r.id)
+  const manualKey = manualIds.join(',')
+  const { data: lastLogs } = useQuery({
+    queryKey: ['recurring_manual_last', kind, manualKey],
+    enabled: manualIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await sb()
+        .from(TABLE[kind])
+        .select('recurring_id, occurred_at')
+        .in('recurring_id', manualIds)
+        .order('occurred_at', { ascending: false })
+        .limit(300)
+      if (error) throw error
+      const m: Record<string, string> = {}
+      for (const row of (data ?? []) as { recurring_id: string | null; occurred_at: string }[]) {
+        if (row.recurring_id && !m[row.recurring_id]) m[row.recurring_id] = row.occurred_at
+      }
+      return m
+    },
+  })
+
+  const [adding, setAdding] = useState<string | null>(null)
+  const addManual = async (r: RecurringRule) => {
+    const lastDate = lastLogs?.[r.id] ? localDateOf(lastLogs[r.id]) : null
+    const ok = confirm(
+      lastDate === todayStr()
+        ? `오늘 이미 '${r.name}' 기록이 있어요.\n한 번 더 추가할까요?`
+        : `오늘 '${r.name}' ${fmt(r.amount)}원을 기록할까요?`,
+    )
+    if (!ok) return
+    setAdding(r.id)
+    const base = {
+      user_id: userId,
+      amount: r.amount,
+      memo: r.memo || r.name,
+      occurred_at: new Date().toISOString(),
+      recurring_id: r.id,
+    }
+    const row: Record<string, unknown> =
+      r.kind === 'saving'
+        ? { ...base, category_id: r.major_category_id }
+        : {
+            ...base,
+            major_category_id: r.major_category_id,
+            minor_category_id: r.minor_category_id,
+            ...(r.kind === 'expense' ? { payment_method_id: r.payment_method_id } : {}),
+          }
+    const { error } = await sb().from(TABLE[r.kind]).insert(row)
+    setAdding(null)
+    if (error) {
+      toastError('기록 실패', error)
+      return
+    }
+    invalidate(['money', 'summary', 'budgets', 'recurring_manual_last'])
+    toast(`${r.name} ${fmt(r.amount)}원 기록했어요`)
+  }
+
   const ruleCard = (r: RecurringRule) => {
     const next = r.is_active ? nextOccurrence(r) : null
+    const manual = r.freq === 'manual'
+    const lastDate = manual && lastLogs?.[r.id] ? localDateOf(lastLogs[r.id]) : null
     return (
       <Card key={r.id} className={`!p-4 mb-2.5 ${r.is_active ? '' : 'opacity-50'}`}>
         <div className="flex items-center justify-between">
@@ -557,9 +623,28 @@ function RecurringEdit() {
                   다음: {new Date(next + 'T00:00:00').getMonth() + 1}월 {new Date(next + 'T00:00:00').getDate()}일
                 </span>
               )}
-              {!r.auto_create && <span className="ml-2 text-[#9AA05E]">확인 후 등록</span>}
+              {manual && (
+                <span className="ml-2">
+                  {lastDate
+                    ? `최근: ${new Date(lastDate + 'T00:00:00').getMonth() + 1}월 ${new Date(lastDate + 'T00:00:00').getDate()}일`
+                    : '기록 없음'}
+                </span>
+              )}
+              {!manual && !r.auto_create && <span className="ml-2 text-[#9AA05E]">확인 후 등록</span>}
             </div>
           </div>
+          {manual && r.is_active && (
+            <button
+              className="shrink-0 mr-2.5 px-3 h-8 rounded-xl bg-sage text-[12px] font-extrabold active:scale-95 transition-transform disabled:opacity-50"
+              disabled={adding === r.id}
+              onClick={(e) => {
+                e.stopPropagation()
+                addManual(r)
+              }}
+            >
+              {adding === r.id ? '…' : '추가'}
+            </button>
+          )}
           <input
             type="checkbox"
             className="w-5 h-5 accent-acc"
@@ -646,11 +731,21 @@ function RecurringEdit() {
               { value: 'weekly', label: '매주' },
               { value: 'monthly', label: '매월' },
               { value: 'yearly', label: '매년' },
+              { value: 'manual', label: '수동' },
             ]}
             value={freq}
             onChange={setFreq}
           />
-          <div className="flex items-center gap-2 text-[12px] font-semibold flex-wrap">
+          {freq === 'manual' && (
+            <p className="text-[11px] text-sub leading-relaxed m-0">
+              자동으로 등록되지 않아요. 목록에서 <b>추가</b> 버튼을 누른 날에 기록돼요.
+              <br />
+              나가는 날이 들쭉날쭉한 구독에 쓰기 좋아요.
+            </p>
+          )}
+          <div
+            className={`items-center gap-2 text-[12px] font-semibold flex-wrap ${freq === 'manual' ? 'hidden' : 'flex'}`}
+          >
             <input
               className="w-12 border-[1.5px] border-line rounded-lg px-2 py-1.5 text-center font-bold outline-none"
               inputMode="numeric"
@@ -702,29 +797,37 @@ function RecurringEdit() {
             )}
           </div>
         </Field>
-        <div className="flex gap-2">
-          <Field label="시작일">
-            <input type="date" className={inputCls} value={startsOn} onChange={(e) => setStartsOn(e.target.value)} />
-          </Field>
-          <Field label="종료일 (선택)">
-            <input type="date" className={inputCls} value={endsOn} onChange={(e) => setEndsOn(e.target.value)} />
-          </Field>
-        </div>
-        <label className="flex items-center justify-between text-[12px] font-bold py-1 mb-2">
-          <span>
-            자동 등록
-            <span className="block text-[10px] text-sub font-semibold mt-0.5">
-              끄면 해당일에 확인 카드가 뜨고 탭해야 등록돼요
-            </span>
-          </span>
-          <input
-            type="checkbox"
-            className="w-5 h-5 accent-acc"
-            checked={autoCreate}
-            onChange={(e) => setAutoCreate(e.target.checked)}
-          />
-        </label>
-        <p className="text-[10px] text-sub mb-2">저장하면 미래 인스턴스만 갱신됩니다. 과거 기록은 그대로 유지돼요.</p>
+        {freq !== 'manual' && (
+          <>
+            <div className="flex gap-2">
+              <Field label="시작일">
+                <input type="date" className={inputCls} value={startsOn} onChange={(e) => setStartsOn(e.target.value)} />
+              </Field>
+              <Field label="종료일 (선택)">
+                <input type="date" className={inputCls} value={endsOn} onChange={(e) => setEndsOn(e.target.value)} />
+              </Field>
+            </div>
+            <label className="flex items-center justify-between text-[12px] font-bold py-1 mb-2">
+              <span>
+                자동 등록
+                <span className="block text-[10px] text-sub font-semibold mt-0.5">
+                  끄면 해당일에 확인 카드가 뜨고 탭해야 등록돼요
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                className="w-5 h-5 accent-acc"
+                checked={autoCreate}
+                onChange={(e) => setAutoCreate(e.target.checked)}
+              />
+            </label>
+          </>
+        )}
+        <p className="text-[10px] text-sub mb-2">
+          {freq === 'manual'
+            ? '수동 규칙은 자동 등록되지 않아요. 목록의 추가 버튼을 누른 날에만 기록돼요.'
+            : '저장하면 미래 인스턴스만 갱신됩니다. 과거 기록은 그대로 유지돼요.'}
+        </p>
         <SaveButton onClick={save} />
         {editing !== 'new' && editing && (
           <button

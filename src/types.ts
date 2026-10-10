@@ -32,7 +32,7 @@ export interface RecurringRule {
   minor_category_id: string | null
   payment_method_id: string | null
   memo: string | null
-  freq: 'monthly' | 'yearly' | 'weekly'
+  freq: 'monthly' | 'yearly' | 'weekly' | 'manual'
   interval_n: number
   bymonthday: number | null
   bymonth: number | null

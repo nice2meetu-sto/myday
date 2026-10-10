@@ -20,6 +20,15 @@ create table if not exists categories (
 alter table categories add column if not exists icon text;
 
 -- 결제수단
+-- 고정지출에 '수동' 주기 추가 (자동 생성 없이 버튼으로만 기록)
+do $$
+begin
+  alter table recurring_rules drop constraint if exists recurring_rules_freq_check;
+  alter table recurring_rules add constraint recurring_rules_freq_check
+    check (freq in ('monthly','yearly','weekly','manual'));
+exception when others then raise notice 'freq check 갱신 실패: %', sqlerrm;
+end $$;
+
 create table if not exists payment_methods (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users on delete cascade,
@@ -39,7 +48,7 @@ create table if not exists recurring_rules (
   minor_category_id uuid references categories(id),
   payment_method_id uuid references payment_methods(id),
   memo text,
-  freq text not null check (freq in ('monthly','yearly','weekly')),
+  freq text not null check (freq in ('monthly','yearly','weekly','manual')),
   interval_n int not null default 1,
   bymonthday int,
   bymonth int,

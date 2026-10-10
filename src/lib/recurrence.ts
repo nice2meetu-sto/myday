@@ -26,7 +26,7 @@ function resolveMonthday(d: Date, bymonthday: number): number {
 
 function ruleMatches(
   d: Date,
-  freq: 'daily' | 'weekly' | 'monthly' | 'yearly',
+  freq: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'manual',
   intervalN: number,
   byweekday: number[] | null,
   bymonthday: number | null,
@@ -35,6 +35,9 @@ function ruleMatches(
 ): boolean {
   if (d < startsOn) return false
   switch (freq) {
+    // 수동: 자동으로 실체화하지 않고 [추가] 버튼으로만 기록한다
+    case 'manual':
+      return false
     case 'daily':
       return differenceInCalendarDays(d, startsOn) % intervalN === 0
     case 'weekly': {
@@ -62,7 +65,7 @@ function ruleMatches(
 }
 
 function expandDates(
-  freq: 'daily' | 'weekly' | 'monthly' | 'yearly',
+  freq: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'manual',
   intervalN: number,
   byweekday: number[] | null,
   bymonthday: number | null,
