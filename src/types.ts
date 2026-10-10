@@ -158,3 +158,21 @@ export interface Note {
   content: string | null
   updated_at: string
 }
+
+export type WishStatus = 'want' | 'bought' | 'dropped'
+
+export interface WishItem {
+  id: string
+  user_id: string
+  name: string
+  price: number | null
+  image_url: string | null
+  reason: string | null
+  drop_reason: string | null
+  wanted_on: string
+  status: WishStatus
+  decided_on: string | null
+  expense_id: string | null
+  sort_order: number
+  created_at: string
+}

@@ -821,6 +821,7 @@ export default function ExpensePage() {
         title="소비"
         right={
           <>
+            <AddButton light icon="🛒" onClick={() => nav('/expense/wishlist')} />
             <AddButton light icon="✎" onClick={() => nav('/expense/edit')} />
             <AddButton onClick={() => setSheetOpen(true)} />
           </>

@@ -9,6 +9,7 @@ import { Toast } from './components/Toast'
 import HomePage from './pages/Home'
 import ExpensePage from './pages/Expense'
 import ExpenseEditPage from './pages/ExpenseEdit'
+import WishlistPage from './pages/Wishlist'
 import HobbyPage from './pages/Hobby'
 import BookDetailPage from './pages/BookDetail'
 import TodoPage from './pages/Todo'
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/expense" element={<ExpensePage />} />
         <Route path="/expense/edit" element={<ExpenseEditPage />} />
+        <Route path="/expense/wishlist" element={<WishlistPage />} />
         <Route path="/hobby" element={<HobbyPage />} />
         <Route path="/hobby/:bookId" element={<BookDetailPage />} />
         <Route path="/todo" element={<TodoPage />} />

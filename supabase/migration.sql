@@ -226,6 +226,25 @@ create table if not exists notes (
   updated_at timestamptz default now()
 );
 
+-- 위시리스트 (사고싶은 물건)
+create table if not exists wishlist (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users on delete cascade,
+  name text not null,
+  price numeric(12,0),
+  image_url text,
+  reason text,                                    -- 사고싶은 이유
+  drop_reason text,                               -- 안 산 이유
+  wanted_on date not null default current_date,   -- 사고싶어진 날짜
+  status text not null default 'want' check (status in ('want','bought','dropped')),
+  decided_on date,                                -- 샀음/안샀음으로 바뀐 날
+  expense_id uuid,                                -- 샀음 처리로 만든 소비 내역 (되돌릴 때 삭제용)
+  sort_order int default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+create index if not exists wishlist_user_status on wishlist (user_id, status, wanted_on desc);
+
 -- 월간 집계 뷰 (KST 기준 월 경계)
 drop view if exists v_monthly_summary;
 create view v_monthly_summary
@@ -258,7 +277,8 @@ declare t text;
 begin
   foreach t in array array[
     'categories','payment_methods','recurring_rules','expenses','incomes','savings',
-    'books','book_quotes','reading_logs','todo_templates','todos','diaries','budgets','notes'
+    'books','book_quotes','reading_logs','todo_templates','todos','diaries','budgets','notes',
+    'wishlist'
   ] loop
     execute format('alter table %I enable row level security', t);
     execute format('drop policy if exists "own rows" on %I', t);
