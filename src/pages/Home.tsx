@@ -6,7 +6,7 @@ import { Card, Label, EmptyState, Field, inputCls, SaveButton } from '../compone
 import { BottomSheet } from '../components/BottomSheet'
 import { MoneySheet } from '../components/MoneySheet'
 import { TodoSheet } from './Todo'
-import { DiarySheet } from './Diary'
+import { DiarySheet, QuickMood } from './Diary'
 import { DateStrip } from '../components/DateStrip'
 import { BookCover, DiaryPhoto } from '../components/CoverImg'
 import { useBooks, updateBookPage, addQuote, isVideo, unitOf, kindIcon, hasProgress } from '../lib/books'
@@ -488,9 +488,10 @@ function DayDiaryCard({ date, onOpen }: { date: string; onOpen: () => void }) {
       }
       const { data, error } = await q
         .order('entry_time', { ascending: false, nullsFirst: false })
-        .limit(20)
+        .limit(60)
       if (error) throw error
-      return data as Diary[]
+      // 기분만 찍은 기록(내용·사진 없음)은 일기로 치지 않는다
+      return (data as Diary[]).filter((d) => !!d.content?.trim() || !!d.photo_url)
     },
   })
   const latest = diaries?.[0]
@@ -657,6 +658,7 @@ export default function HomePage() {
         <MemoCard />
       </div>
       <SpendingGrid />
+      <QuickMood />
       <MoneySheet open={expenseOpen} onClose={() => setExpenseOpen(false)} initialDate={selDate} />
       <TodoSheet open={todoOpen} onClose={() => setTodoOpen(false)} initialDate={selDate} />
       <DiarySheet open={diaryOpen} onClose={() => setDiaryOpen(false)} initialDate={selDate} />

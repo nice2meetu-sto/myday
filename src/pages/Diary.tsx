@@ -358,7 +358,7 @@ function DiaryCalendar({
 }
 
 // ---------------- 오늘 기분 한 줄 기록 ----------------
-function QuickMood() {
+export function QuickMood() {
   const userId = useUserId()
   const invalidate = useInvalidate()
   const today = todayStr()
@@ -404,7 +404,7 @@ function QuickMood() {
   }
 
   return (
-    <div className="bg-white rounded-card border border-black/10 p-3 mb-3">
+    <div className="bg-card rounded-card shadow-card border border-black/10 p-3.5 mb-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[12px] font-bold">오늘 기분은?</span>
         {current?.mood != null && (
@@ -625,7 +625,6 @@ export default function DiaryPage() {
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
-      {!searching && <QuickMood />}
       {/* 검색 중에는 달력 숨김, 평소에는 달력만 (일자 탭 → 그날 일기) */}
       {!searching && (
         <DiaryCalendar onOpen={(d) => setDetail(d)} selDay={selDay} onSelDay={setSelDay} />
