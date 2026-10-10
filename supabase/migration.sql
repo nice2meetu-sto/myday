@@ -171,6 +171,7 @@ create table if not exists todo_templates (
   user_id uuid not null references auth.users on delete cascade,
   content text not null,
   quadrant text check (quadrant in ('ui','un','ni','nn')),
+  note text,
   due_time time,
   freq text not null check (freq in ('daily','weekly','monthly')),
   interval_n int not null default 1,
@@ -189,6 +190,7 @@ create table if not exists todos (
   user_id uuid not null references auth.users on delete cascade,
   content text not null,
   quadrant text check (quadrant in ('ui','un','ni','nn')),
+  note text,
   due_date date,
   due_time time,
   is_done boolean default false,
@@ -202,6 +204,9 @@ create table if not exists todos (
 create index if not exists todos_user_due on todos (user_id, due_date);
 create index if not exists todos_user_template on todos (user_id, template_id, due_date);
 create unique index if not exists todos_template_date on todos (template_id, due_date) where template_id is not null;
+-- 할일 세부 메모
+alter table todos add column if not exists note text;
+alter table todo_templates add column if not exists note text;
 
 -- 일기
 create table if not exists diaries (

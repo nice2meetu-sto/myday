@@ -139,6 +139,7 @@ export async function ensureRecurrences(userId: string) {
       user_id: userId,
       content: t.content,
       quadrant: t.quadrant,
+      note: t.note,
       due_date: d,
       due_time: t.due_time,
       template_id: t.id,

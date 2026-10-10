@@ -111,6 +111,7 @@ export interface TodoTemplate {
   user_id: string
   content: string
   quadrant: Quadrant | null
+  note: string | null
   due_time: string | null
   freq: 'daily' | 'weekly' | 'monthly'
   interval_n: number
@@ -126,6 +127,7 @@ export interface Todo {
   user_id: string
   content: string
   quadrant: Quadrant | null
+  note: string | null
   due_date: string | null
   due_time: string | null
   is_done: boolean

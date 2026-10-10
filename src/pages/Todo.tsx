@@ -99,6 +99,8 @@ export default function TodoPage() {
   const [templatesOpen, setTemplatesOpen] = useState(false)
   const [pick, setPick] = useState<PickState | null>(null)
   const [editTemplate, setEditTemplate] = useState<TodoTemplate | null>(null)
+  const [detail, setDetail] = useState<Todo | null>(null)
+  const [editTodo, setEditTodo] = useState<Todo | null>(null)
   const pickRef = useRef<PickState | null>(null)
   pickRef.current = pick
 
@@ -240,7 +242,7 @@ export default function TodoPage() {
         if (cur) {
           cancelPick()
         } else {
-          toggleDone(t)
+          setDetail(t)
         }
       }
     }
@@ -291,7 +293,8 @@ export default function TodoPage() {
         style={{ touchAction: t.is_done ? 'auto' : 'none' }}
         onPointerDown={(e) => onCardPointerDown(t, e)}
         onClick={() => {
-          if (t.is_done && !pickRef.current) toggleDone(t)
+          // 완료된 카드는 pointerdown 에서 일찍 빠지므로 여기서 상세를 연다
+          if (t.is_done && !pickRef.current) setDetail(t)
         }}
       >
         {t.template_id && <i className="not-italic text-[#9AA05E] text-[9px] mt-px flex-none">↻</i>}
@@ -582,6 +585,19 @@ export default function TodoPage() {
         </div>
       )}
 
+      <TodoDetailSheet
+        todo={detail}
+        onClose={() => setDetail(null)}
+        onToggleDone={(t) => {
+          toggleDone(t)
+          setDetail(null)
+        }}
+        onEdit={(t) => {
+          setDetail(null)
+          setEditTodo(t)
+        }}
+      />
+      <TodoSheet open={!!editTodo} onClose={() => setEditTodo(null)} edit={editTodo} />
       <TodoSheet
         open={!!sheetInit}
         onClose={() => setSheetInit(null)}
@@ -618,6 +634,7 @@ export function TodoSheet({
   const userId = useUserId()
   const invalidate = useInvalidate()
   const [content, setContent] = useState('')
+  const [note, setNote] = useState('')
   const [quadrant, setQuadrant] = useState<Quadrant | null>(null)
   const [dueDate, setDueDate] = useState('')
   const [dueTime, setDueTime] = useState('')
@@ -630,6 +647,7 @@ export function TodoSheet({
   if (open && edit && loaded.current !== edit.id) {
     loaded.current = edit.id
     setContent(edit.content)
+    setNote(edit.note ?? '')
     setQuadrant(edit.quadrant)
     setDueDate(edit.due_date ?? '')
     setDueTime(edit.due_time?.slice(0, 5) ?? '')
@@ -638,6 +656,7 @@ export function TodoSheet({
   if (open && !edit && loaded.current !== 'new') {
     loaded.current = 'new'
     setContent('')
+    setNote('')
     setQuadrant(initialQuad ?? null)
     setDueDate(initialDate ?? '')
     setDueTime('')
@@ -655,6 +674,7 @@ export function TodoSheet({
         .from('todos')
         .update({
           content: content.trim(),
+          note: note.trim() || null,
           quadrant,
           due_date: dueDate || null,
           due_time: dueTime || null,
@@ -676,6 +696,7 @@ export function TodoSheet({
         .insert({
           user_id: userId,
           content: content.trim(),
+          note: note.trim() || null,
           quadrant,
           due_time: dueTime || null,
           freq,
@@ -693,6 +714,7 @@ export function TodoSheet({
       const { error } = await sb().from('todos').insert({
         user_id: userId,
         content: content.trim(),
+        note: note.trim() || null,
         quadrant,
         due_date: dueDate || null,
         due_time: dueTime || null,
@@ -705,6 +727,7 @@ export function TodoSheet({
     invalidate(['todos'])
     toast('할일을 추가했어요')
     setContent('')
+    setNote('')
     setQuadrant(null)
     setDueDate('')
     setDueTime('')
@@ -723,6 +746,14 @@ export function TodoSheet({
           options={QUADS.map((q) => ({ value: q.key as Quadrant | null, label: q.label }))}
           value={quadrant}
           onChange={setQuadrant}
+        />
+      </Field>
+      <Field label="메모 (선택)">
+        <textarea
+          className={`${inputCls} min-h-[72px] resize-y leading-[1.6]`}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="준비물, 링크, 세부 단계 같은 걸 적어두세요"
         />
       </Field>
       <div className="flex gap-2 items-end">
@@ -817,6 +848,85 @@ export function TodoSheet({
         </div>
       ) : (
         <SaveButton onClick={save} />
+      )}
+    </BottomSheet>
+  )
+}
+
+// ---------------- 할일 상세 (할일 탭 전용) ----------------
+function TodoDetailSheet({
+  todo,
+  onClose,
+  onToggleDone,
+  onEdit,
+}: {
+  todo: Todo | null
+  onClose: () => void
+  onToggleDone: (t: Todo) => void
+  onEdit: (t: Todo) => void
+}) {
+  const quad = QUADS.find((q) => q.key === todo?.quadrant)
+  return (
+    <BottomSheet open={!!todo} onClose={onClose} title="할일">
+      {todo && (
+        <>
+          <div
+            className={`text-[18px] font-extrabold leading-snug tracking-tight ${
+              todo.is_done ? 'text-sub line-through' : ''
+            }`}
+          >
+            {todo.content}
+          </div>
+          <div className="flex flex-wrap gap-1.5 mt-2.5 mb-3.5">
+            <span className="bg-[#F2F2EF] rounded-lg px-2.5 py-1 text-[11px] font-bold">
+              {todo.due_date ? fmtDateKo(todo.due_date) : '기간 미정'}
+              {todo.due_time && ` · ${fmtTimeHM(todo.due_time)}`}
+            </span>
+            <span
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${quad?.hi ? 'bg-pale' : 'bg-[#F2F2EF]'}`}
+            >
+              {quad?.label ?? '미분류'}
+            </span>
+            {todo.template_id && (
+              <span className="bg-[#F2F2EF] rounded-lg px-2.5 py-1 text-[11px] font-bold text-[#9AA05E]">
+                ↻ 반복
+              </span>
+            )}
+            {todo.is_done && (
+              <span className="bg-sage rounded-lg px-2.5 py-1 text-[11px] font-bold text-[#3d5548]">
+                완료
+              </span>
+            )}
+          </div>
+
+          <div className="text-[11px] text-sub font-bold mb-1.5">메모</div>
+          <div className="bg-[#FAFAF8] rounded-2xl p-3.5 mb-3.5">
+            {todo.note ? (
+              <p className="m-0 text-[13px] leading-[1.7] text-[#333] whitespace-pre-wrap">
+                {todo.note}
+              </p>
+            ) : (
+              <span className="text-[12px] text-sub">아직 메모가 없어요 · 수정에서 적을 수 있어요</span>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              className="flex-1 border-0 rounded-[14px] py-[13px] font-bold text-[13px] bg-[#F2F2EF]"
+              onClick={() => onEdit(todo)}
+            >
+              수정
+            </button>
+            <button
+              className={`flex-1 border-0 rounded-[14px] py-[13px] font-bold text-[13px] ${
+                todo.is_done ? 'bg-[#F2F2EF]' : 'bg-acc text-white'
+              }`}
+              onClick={() => onToggleDone(todo)}
+            >
+              {todo.is_done ? '완료 취소' : '완료'}
+            </button>
+          </div>
+        </>
       )}
     </BottomSheet>
   )
@@ -972,6 +1082,7 @@ function TemplateEditSheet({
   const userId = useUserId()
   const invalidate = useInvalidate()
   const [content, setContent] = useState('')
+  const [note, setNote] = useState('')
   const [quadrant, setQuadrant] = useState<Quadrant | null>(null)
   const [dueTime, setDueTime] = useState('')
   const [freq, setFreq] = useState<'daily' | 'weekly' | 'monthly'>('daily')
@@ -982,6 +1093,7 @@ function TemplateEditSheet({
   if (template && loaded.current !== template.id) {
     loaded.current = template.id
     setContent(template.content)
+    setNote(template.note ?? '')
     setQuadrant(template.quadrant)
     setDueTime(template.due_time?.slice(0, 5) ?? '')
     setFreq(template.freq)
@@ -996,6 +1108,7 @@ function TemplateEditSheet({
       .from('todo_templates')
       .update({
         content: content.trim(),
+        note: note.trim() || null,
         quadrant,
         due_time: dueTime || null,
         freq,
@@ -1028,6 +1141,13 @@ function TemplateEditSheet({
           options={QUADS.map((q) => ({ value: q.key as Quadrant | null, label: q.label }))}
           value={quadrant}
           onChange={setQuadrant}
+        />
+      </Field>
+      <Field label="메모 (선택)">
+        <textarea
+          className={`${inputCls} min-h-[64px] resize-y leading-[1.6]`}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
         />
       </Field>
       <Field label="시간 (선택)">
