@@ -495,6 +495,11 @@ function DiaryStats({
     })
     return m
   }, [monthDiaries])
+  // 한 달 전 / 1년 전 중 실제로 기록이 있는 것만
+  const hits = memoryDates
+    .map((m) => ({ label: m.label, hit: (memories ?? []).find((d) => d.entry_date === m.date) }))
+    .filter((x): x is { label: string; hit: Diary } => !!x.hit)
+
   const moodTotal = [...moodCounts.values()].reduce((a, b) => a + b, 0)
   const goodDays = MOODS.filter((m) => m.good).reduce((s, m) => s + (moodCounts.get(m.v) ?? 0), 0)
 
@@ -554,34 +559,29 @@ function DiaryStats({
         <div className="text-[12px] text-sub py-1 mb-1">아직 기분 기록이 없어요</div>
       )}
 
-      {/* 그날의 기억 */}
-      <div className="text-[10px] text-sub font-bold mt-3 mb-1.5">그날의 기억</div>
-      {memoryDates.map((m) => {
-        const hit = (memories ?? []).find((d) => d.entry_date === m.date)
-        return (
-          <div
-            key={m.date}
-            className={`flex gap-2.5 items-center py-1.5 ${hit ? 'cursor-pointer' : ''}`}
-            onClick={() => hit && onOpen(hit)}
-          >
-            <span className="text-[10px] text-sub font-bold flex-none w-[62px]">{m.label}</span>
-            {hit ? (
-              <>
-                {hit.photo_url && (
-                  <DiaryPhoto path={hit.photo_url} thumb className="w-7 h-7 rounded-lg flex-none" />
-                )}
-                {moodOf(hit.mood) && <span className="text-[13px]">{moodOf(hit.mood)!.emoji}</span>}
-                <span className="text-[12px] text-[#444] truncate flex-1">
-                  {hit.content || (hit.photo_url ? '(사진 일기)' : moodOf(hit.mood)?.label)}
-                </span>
-                <span className="text-sub text-[11px] flex-none">›</span>
-              </>
-            ) : (
-              <span className="text-[12px] text-sub">기록이 없어요</span>
-            )}
-          </div>
-        )
-      })}
+      {/* 그날의 기억 — 기록이 있는 날만 (둘 다 없으면 통째로 숨김) */}
+      {hits.length > 0 && (
+        <>
+          <div className="text-[10px] text-sub font-bold mt-3 mb-1.5">그날의 기억</div>
+          {hits.map(({ label, hit }) => (
+            <div
+              key={hit.id}
+              className="flex gap-2.5 items-center py-1.5 cursor-pointer"
+              onClick={() => onOpen(hit)}
+            >
+              <span className="text-[10px] text-sub font-bold flex-none w-[62px]">{label}</span>
+              {hit.photo_url && (
+                <DiaryPhoto path={hit.photo_url} thumb className="w-7 h-7 rounded-lg flex-none" />
+              )}
+              {moodOf(hit.mood) && <span className="text-[13px]">{moodOf(hit.mood)!.emoji}</span>}
+              <span className="text-[12px] text-[#444] truncate flex-1">
+                {hit.content || (hit.photo_url ? '(사진 일기)' : moodOf(hit.mood)?.label)}
+              </span>
+              <span className="text-sub text-[11px] flex-none">›</span>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   )
 }
