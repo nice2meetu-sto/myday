@@ -592,20 +592,24 @@ export default function DiaryPage() {
   const [detail, setDetail] = useState<Diary | null>(null)
   const [editing, setEditing] = useState<Diary | null>(null)
 
-  const searching = !!search.trim()
+  const [moodFilter, setMoodFilter] = useState<number | null>(null)
+  const [moodOpen, setMoodOpen] = useState(false)
+
+  const searching = !!search.trim() || moodFilter != null
   const grouped = useMemo(() => {
     const map = new Map<string, Diary[]>()
     const q = search.trim()
-    if (!q) return []
+    if (!q && moodFilter == null) return []
     ;(diaries ?? [])
-      .filter((d) => (d.content ?? '').includes(q))
+      .filter((d) => (!q || (d.content ?? '').includes(q)) && (moodFilter == null || d.mood === moodFilter))
       .forEach((d) => {
         if (!map.has(d.entry_date)) map.set(d.entry_date, [])
         map.get(d.entry_date)!.push(d)
       })
     // 같은 날짜는 시간순 (오름차순 아님 — 최신이 위)
     return [...map.entries()]
-  }, [diaries, search])
+  }, [diaries, search, moodFilter])
+  const hitCount = grouped.reduce((s, [, items]) => s + items.length, 0)
 
   const remove = async (d: Diary) => {
     if (!confirm('이 일기를 삭제할까요?')) return
@@ -619,17 +623,57 @@ export default function DiaryPage() {
   return (
     <div>
       <PageHead title="일기" right={<AddButton onClick={() => setWriting(true)} />} />
-      <input
-        className="w-full border border-black/10 rounded-xl px-3.5 py-[10px] font-semibold text-[13px] outline-none bg-white mb-3 placeholder:text-[#B8B8B4]"
-        placeholder="🔍 일기 내용 검색"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
+      <div className="flex gap-2 mb-3">
+        <input
+          className="flex-1 min-w-0 border border-black/10 rounded-xl px-3.5 py-[10px] font-semibold text-[13px] outline-none bg-white placeholder:text-[#B8B8B4]"
+          placeholder="🔍 일기 내용 검색"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <button
+          className={`flex-none w-11 rounded-xl border text-[18px] leading-none transition-all ${
+            moodFilter != null
+              ? 'border-transparent'
+              : `bg-white ${moodOpen ? 'border-acc' : 'border-black/10'}`
+          }`}
+          style={moodFilter != null ? { background: moodOf(moodFilter)!.color } : undefined}
+          onClick={() => setMoodOpen(!moodOpen)}
+          aria-label="기분으로 보기"
+        >
+          {moodFilter != null ? moodOf(moodFilter)!.emoji : '🔎'}
+        </button>
+      </div>
+      {moodOpen && (
+        <motion.div {...popIn} className="bg-white rounded-card border border-black/10 p-3 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[12px] font-bold">기분으로 보기</span>
+            {moodFilter != null && (
+              <button
+                className="border-0 bg-transparent text-[11px] font-bold text-sub p-0"
+                onClick={() => setMoodFilter(null)}
+              >
+                전체 보기
+              </button>
+            )}
+          </div>
+          <MoodPicker value={moodFilter} onChange={setMoodFilter} size="sm" />
+        </motion.div>
+      )}
+      {searching && (
+        <div className="text-[11px] font-bold text-sub mx-0.5 mb-1">
+          {moodFilter != null && `${moodOf(moodFilter)!.emoji} ${moodOf(moodFilter)!.label} · `}
+          {hitCount}개
+        </div>
+      )}
       {/* 검색 중에는 달력 숨김, 평소에는 달력만 (일자 탭 → 그날 일기) */}
       {!searching && (
         <DiaryCalendar onOpen={(d) => setDetail(d)} selDay={selDay} onSelDay={setSelDay} />
       )}
-      {searching && !grouped.length && <EmptyState>검색 결과가 없어요</EmptyState>}
+      {searching && !grouped.length && (
+        <EmptyState>
+          {search.trim() ? '검색 결과가 없어요' : '이 기분으로 기록한 날이 없어요'}
+        </EmptyState>
+      )}
       {grouped.map(([date, items]) => (
         <div key={date}>
           <div className="text-[11px] font-extrabold text-sub mx-0.5 mt-3.5 mb-2">
@@ -651,15 +695,20 @@ export default function DiaryPage() {
                 />
               )}
               <div className="min-w-0 flex-1">
-                {d.entry_time && (
-                  <time className="text-[10px] text-sub font-bold">{fmtTimeHM(d.entry_time)}</time>
-                )}
+                <div className="flex items-center gap-1.5">
+                  {moodOf(d.mood) && <span className="text-[13px]">{moodOf(d.mood)!.emoji}</span>}
+                  {d.entry_time && (
+                    <time className="text-[10px] text-sub font-bold">{fmtTimeHM(d.entry_time)}</time>
+                  )}
+                </div>
                 {d.content ? (
                   <p className="mt-1 mb-0 text-[13px] leading-[1.6] text-[#333] line-clamp-3">
                     {d.content}
                   </p>
                 ) : (
-                  <p className="mt-1 mb-0 text-[12px] text-sub">(사진 일기)</p>
+                  <p className="mt-1 mb-0 text-[12px] text-sub">
+                    {d.photo_url ? '(사진 일기)' : `(${moodOf(d.mood)?.label ?? '기록'})`}
+                  </p>
                 )}
               </div>
             </motion.div>
