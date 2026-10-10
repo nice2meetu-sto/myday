@@ -6,7 +6,7 @@ import { Card, Label, EmptyState, Field, inputCls, SaveButton } from '../compone
 import { BottomSheet } from '../components/BottomSheet'
 import { MoneySheet } from '../components/MoneySheet'
 import { TodoSheet } from './Todo'
-import { DiarySheet, QuickMood } from './Diary'
+import { DiarySheet, QuickMood, moodOf } from './Diary'
 import { DateStrip } from '../components/DateStrip'
 import { BookCover, DiaryPhoto } from '../components/CoverImg'
 import { useBooks, updateBookPage, addQuote, isVideo, unitOf, kindIcon, hasProgress } from '../lib/books'
@@ -517,6 +517,11 @@ function DayDiaryCard({ date, onOpen }: { date: string; onOpen: () => void }) {
       <div className="min-w-0 flex-1 h-full flex flex-col py-0.5">
         <Label className="flex-none">
           {label}
+          {moodOf(latest?.mood) && (
+            <span className="ml-1 text-[13px] align-middle" title={moodOf(latest!.mood)!.label}>
+              {moodOf(latest!.mood)!.emoji}
+            </span>
+          )}
           {latest?.entry_time && (
             <span className="ml-1 font-semibold">{fmtTimeHM(latest.entry_time)}</span>
           )}

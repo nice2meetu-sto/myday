@@ -22,7 +22,7 @@ export const MOODS: { v: number; emoji: string; label: string; color: string }[]
   { v: 2, emoji: '😔', label: '별로', color: '#A3C4EB' },
   { v: 1, emoji: '😣', label: '힘듦', color: '#D3968C' },
 ]
-const moodOf = (v: number | null | undefined) => MOODS.find((m) => m.v === v)
+export const moodOf = (v: number | null | undefined) => MOODS.find((m) => m.v === v)
 
 /** 기분 선택 줄 — 이모지 하나 탭으로 고르고, 다시 누르면 해제 */
 function MoodPicker({
