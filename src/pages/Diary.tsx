@@ -4,7 +4,7 @@ import { addDays, addMonths, endOfMonth, format, startOfMonth } from 'date-fns'
 import { motion } from 'framer-motion'
 import { AddButton, PageHead, EmptyState, Field, inputCls, SaveButton, popIn, PeriodNav } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
-import { DiaryPhoto } from '../components/CoverImg'
+import { DiaryPhoto, PhotoLightbox } from '../components/CoverImg'
 import { uploadImage, deleteImage } from '../lib/image'
 import { useInvalidate, useUserId } from '../lib/queries'
 import { fmtDateKo, fmtTimeHM, todayStr, ymd, DAY_NAMES } from '../lib/format'
@@ -595,6 +595,7 @@ export default function DiaryPage() {
   const [selDay, setSelDay] = useState<string | null>(null)
   const [detail, setDetail] = useState<Diary | null>(null)
   const [editing, setEditing] = useState<Diary | null>(null)
+  const [zoom, setZoom] = useState<string | null>(null)
 
   const [moodFilter, setMoodFilter] = useState<number | null>(null)
   const [moodOpen, setMoodOpen] = useState(false)
@@ -734,15 +735,17 @@ export default function DiaryPage() {
         onClose={() => setDetail(null)}
         title={detail ? `${fmtDateKo(detail.entry_date)}${detail.entry_time ? ' · ' + fmtTimeHM(detail.entry_time) : ''}` : ''}
       >
-        <div className="flex gap-3 items-start">
+        {/* 사진은 왼쪽에 띄워두고 글이 길면 사진 아래로도 흘러내리게 */}
+        <div className="overflow-hidden">
           {detail?.photo_url && (
             <DiaryPhoto
               path={detail.photo_url}
-              className="w-[110px] h-[110px] rounded-2xl flex-none"
+              className="w-[110px] h-[110px] rounded-2xl float-left mr-3 mb-2"
+              onClick={() => setZoom(detail.photo_url)}
             />
           )}
           {detail?.content && (
-            <p className="text-[14px] leading-[1.7] text-[#333] whitespace-pre-wrap m-0 min-w-0 flex-1">
+            <p className="text-[14px] leading-[1.7] text-[#333] whitespace-pre-wrap m-0">
               {detail.content}
             </p>
           )}
@@ -765,6 +768,8 @@ export default function DiaryPage() {
           </button>
         </div>
       </BottomSheet>
+
+      <PhotoLightbox path={zoom} onClose={() => setZoom(null)} />
 
       <DiarySheet open={writing} onClose={() => setWriting(false)} initialDate={selDay ?? undefined} />
       <DiarySheet open={!!editing} onClose={() => setEditing(null)} edit={editing} />
