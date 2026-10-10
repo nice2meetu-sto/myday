@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { motion } from 'framer-motion'
 import {
   Card,
   SegmentedControl,
@@ -11,7 +10,6 @@ import {
   inputCls,
   SaveButton,
   ChipRow,
-  popIn,
 } from '../components/common'
 import { BottomSheet } from '../components/BottomSheet'
 import { useImageUrl } from '../components/CoverImg'
@@ -102,12 +100,27 @@ async function ensureShoppingCategory(
 }
 
 // ---------------- 사진 ----------------
-function WishPhoto({ item, className = '' }: { item: WishItem; className?: string }) {
-  const { data: url } = useImageUrl('covers', item.image_url, true)
+function WishPhoto({
+  item,
+  className = '',
+  thumb = true,
+  size = 22,
+}: {
+  item: WishItem
+  className?: string
+  thumb?: boolean
+  size?: number
+}) {
+  const { data: url } = useImageUrl('covers', item.image_url, thumb)
   if (item.image_url && url)
     return <img src={url} alt={item.name} loading="lazy" className={`object-cover ${className}`} />
   return (
-    <div className={`bg-[#F2F2EF] flex items-center justify-center text-[22px] ${className}`}>🛒</div>
+    <div
+      className={`bg-[#F2F2EF] flex items-center justify-center ${className}`}
+      style={{ fontSize: size }}
+    >
+      🛒
+    </div>
   )
 }
 
@@ -190,14 +203,6 @@ function WishSheet({
     onClose()
   }
 
-  const remove = async () => {
-    if (!edit) return
-    if (!confirm(`'${edit.name}'을(를) 삭제할까요?`)) return
-    await sb().from('wishlist').delete().eq('id', edit.id)
-    invalidate(['wishlist'])
-    toast('삭제했어요')
-    onClose()
-  }
 
   return (
     <BottomSheet open={open} onClose={onClose} title={edit ? '위시 수정' : '사고싶은 것'}>
@@ -289,25 +294,9 @@ function WishSheet({
           </>
         )}
       </Field>
-      {edit ? (
-        <div className="flex gap-2">
-          <button
-            className="flex-1 border-0 rounded-[14px] py-[13px] font-bold text-[13px] bg-[#F2F2EF] text-warn"
-            onClick={remove}
-          >
-            삭제
-          </button>
-          <div className="flex-1">
-            <SaveButton onClick={save} disabled={busy}>
-              {busy ? '저장 중…' : '저장'}
-            </SaveButton>
-          </div>
-        </div>
-      ) : (
-        <SaveButton onClick={save} disabled={busy}>
-          {busy ? '저장 중…' : '저장'}
-        </SaveButton>
-      )}
+      <SaveButton onClick={save} disabled={busy}>
+        {busy ? '저장 중…' : '저장'}
+      </SaveButton>
     </BottomSheet>
   )
 }
@@ -463,75 +452,122 @@ function DropSheet({ item, onClose }: { item: WishItem | null; onClose: () => vo
   )
 }
 
-// ---------------- 카드 ----------------
-function WishCard({
+// ---------------- 그리드 타일 ----------------
+function WishTile({ item, onOpen }: { item: WishItem; onOpen: () => void }) {
+  const days = daysSince(item.wanted_on)
+  return (
+    <Card className="!p-0 overflow-hidden" onClick={onOpen}>
+      <WishPhoto item={item} className="w-full aspect-square" size={34} />
+      <div className="p-2.5">
+        <div className="text-[12.5px] font-bold leading-snug line-clamp-2">{item.name}</div>
+        <div className="text-[15px] font-extrabold tabular mt-1">
+          {item.price != null ? `₩${fmt(item.price)}` : '가격 미정'}
+        </div>
+        <div className="text-[10px] text-sub font-semibold mt-0.5">
+          {item.status === 'want'
+            ? days > 0
+              ? `담아둔 지 ${days}일`
+              : '오늘 담았어요'
+            : item.decided_on
+              ? fmtDot(item.decided_on)
+              : fmtDot(item.wanted_on)}
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+// ---------------- 상세 시트 ----------------
+function WishDetailSheet({
   item,
+  onClose,
   onEdit,
   onBuy,
   onDrop,
   onRevert,
+  onDelete,
 }: {
-  item: WishItem
+  item: WishItem | null
+  onClose: () => void
   onEdit: () => void
   onBuy: () => void
   onDrop: () => void
   onRevert: () => void
+  onDelete: () => void
 }) {
+  if (!item) return <BottomSheet open={false} onClose={onClose} title="" children={null} />
   const days = daysSince(item.wanted_on)
   return (
-    <motion.div {...popIn} className="mb-2.5">
-      <Card className="!p-3">
-        <div className="flex gap-3 cursor-pointer" onClick={onEdit}>
-          <WishPhoto item={item} className="w-[72px] h-[72px] rounded-xl flex-none" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
-              <b className="text-[13px] font-bold leading-snug truncate">{item.name}</b>
-              <span className="text-[13px] font-bold tabular flex-none">
-                {item.price != null ? fmt(item.price) : '미정'}
-              </span>
-            </div>
-            {item.reason && (
-              <p className="mt-1 mb-0 text-[11.5px] leading-[1.5] text-[#666] line-clamp-2">
-                {item.reason}
-              </p>
-            )}
-            <div className="text-[10px] text-sub font-semibold mt-1">
-              {fmtDot(item.wanted_on)}
-              {item.status === 'want' && days > 0 && <> · 담아둔 지 {days}일</>}
-              {item.status !== 'want' && item.decided_on && <> → {fmtDot(item.decided_on)}</>}
-            </div>
-            {item.status === 'dropped' && item.drop_reason && (
-              <p className="mt-1 mb-0 text-[11px] text-sub italic line-clamp-2">
-                “{item.drop_reason}”
-              </p>
-            )}
-          </div>
+    <BottomSheet open={!!item} onClose={onClose} title={item.name}>
+      <WishPhoto item={item} thumb={false} className="w-full rounded-2xl mb-3 max-h-[46dvh]" size={48} />
+
+      <div className="text-[22px] font-extrabold tabular tracking-tight">
+        {item.price != null ? `₩${fmt(item.price)}` : '가격 미정'}
+      </div>
+      <div className="text-[11px] text-sub font-semibold mt-1 mb-3">
+        {fmtDot(item.wanted_on)}부터
+        {item.status === 'want' && <> · 담아둔 지 {days}일</>}
+        {item.status === 'bought' && item.decided_on && <> → {fmtDot(item.decided_on)} 구매</>}
+        {item.status === 'dropped' && item.decided_on && <> → {fmtDot(item.decided_on)} 안 사기로</>}
+      </div>
+
+      {item.reason && (
+        <div className="bg-[#FAFAF8] rounded-2xl p-3.5 mb-2.5">
+          <div className="text-[11px] text-sub font-bold mb-1">사고 싶은 이유</div>
+          <p className="m-0 text-[13px] leading-[1.6] text-[#333] whitespace-pre-wrap">
+            {item.reason}
+          </p>
         </div>
-        {item.status === 'want' ? (
-          <div className="flex gap-2 mt-2.5">
-            <button
-              className="flex-1 border-0 rounded-xl py-2 text-[12px] font-bold bg-acc text-white"
-              onClick={onBuy}
-            >
-              샀어요
-            </button>
-            <button
-              className="flex-1 border-0 rounded-xl py-2 text-[12px] font-bold bg-[#F2F2EF]"
-              onClick={onDrop}
-            >
-              안 살래요
-            </button>
-          </div>
-        ) : (
+      )}
+      {item.status === 'dropped' && item.drop_reason && (
+        <div className="bg-[#FAFAF8] rounded-2xl p-3.5 mb-2.5">
+          <div className="text-[11px] text-sub font-bold mb-1">안 사기로 한 이유</div>
+          <p className="m-0 text-[13px] leading-[1.6] text-[#333] whitespace-pre-wrap">
+            {item.drop_reason}
+          </p>
+        </div>
+      )}
+
+      <div className="text-[11px] text-sub font-bold mt-3.5 mb-1.5">처리</div>
+      {item.status === 'want' ? (
+        <div className="flex gap-2">
           <button
-            className="w-full border-0 rounded-xl py-2 text-[12px] font-bold bg-[#F2F2EF] text-sub mt-2.5"
-            onClick={onRevert}
+            className="flex-1 border-0 rounded-[14px] py-[13px] font-bold text-[13px] bg-[#F2F2EF]"
+            onClick={onDrop}
           >
-            다시 사고싶음으로
+            안 살래요
           </button>
-        )}
-      </Card>
-    </motion.div>
+          <button
+            className="flex-1 border-0 rounded-[14px] py-[13px] font-bold text-[13px] bg-acc text-white"
+            onClick={onBuy}
+          >
+            샀어요
+          </button>
+        </div>
+      ) : (
+        <button
+          className="w-full border-0 rounded-[14px] py-[13px] font-bold text-[13px] bg-[#F2F2EF]"
+          onClick={onRevert}
+        >
+          다시 사고싶음으로
+        </button>
+      )}
+
+      <div className="flex gap-2 mt-3">
+        <button
+          className="flex-1 border-0 bg-transparent text-[12px] font-bold text-sub py-2"
+          onClick={onEdit}
+        >
+          아이템 수정
+        </button>
+        <button
+          className="flex-1 border-0 bg-transparent text-[12px] font-bold text-warn py-2"
+          onClick={onDelete}
+        >
+          아이템 삭제
+        </button>
+      </div>
+    </BottomSheet>
   )
 }
 
@@ -543,6 +579,7 @@ export default function WishlistPage() {
   const { data: items } = useWishlist(tab)
   const [sheetOpen, setSheetOpen] = useState(false)
   const [editing, setEditing] = useState<WishItem | null>(null)
+  const [detail, setDetail] = useState<WishItem | null>(null)
   const [buying, setBuying] = useState<WishItem | null>(null)
   const [dropping, setDropping] = useState<WishItem | null>(null)
 
@@ -550,6 +587,17 @@ export default function WishlistPage() {
     () => (items ?? []).reduce((s, i) => s + Number(i.price ?? 0), 0),
     [items],
   )
+
+  // 목록이 갱신되면 열려 있는 상세도 최신 내용으로 맞춰준다
+  const detailItem = detail ? ((items ?? []).find((i) => i.id === detail.id) ?? detail) : null
+
+  const removeItem = async (item: WishItem) => {
+    if (!confirm(`'${item.name}'을(를) 삭제할까요?`)) return
+    await sb().from('wishlist').delete().eq('id', item.id)
+    invalidate(['wishlist'])
+    setDetail(null)
+    toast('삭제했어요')
+  }
 
   const revert = async (item: WishItem) => {
     // 샀음을 되돌릴 때 자동 등록했던 소비 내역도 지울지 물어본다
@@ -570,6 +618,7 @@ export default function WishlistPage() {
       })
       .eq('id', item.id)
     invalidate(['wishlist', 'money', 'summary', 'budgets'])
+    setDetail(null)
     toast('사고싶음으로 되돌렸어요')
   }
 
@@ -607,20 +656,31 @@ export default function WishlistPage() {
               : '안 사기로 한 게 없어요'}
         </EmptyState>
       )}
-      {items?.map((item) => (
-        <WishCard
-          key={item.id}
-          item={item}
-          onEdit={() => {
-            setEditing(item)
-            setSheetOpen(true)
-          }}
-          onBuy={() => setBuying(item)}
-          onDrop={() => setDropping(item)}
-          onRevert={() => revert(item)}
-        />
-      ))}
+      <div className="grid grid-cols-2 gap-3">
+        {items?.map((item) => (
+          <WishTile key={item.id} item={item} onOpen={() => setDetail(item)} />
+        ))}
+      </div>
 
+      <WishDetailSheet
+        item={detailItem}
+        onClose={() => setDetail(null)}
+        onEdit={() => {
+          setEditing(detailItem)
+          setDetail(null)
+          setSheetOpen(true)
+        }}
+        onBuy={() => {
+          setBuying(detailItem)
+          setDetail(null)
+        }}
+        onDrop={() => {
+          setDropping(detailItem)
+          setDetail(null)
+        }}
+        onRevert={() => detailItem && revert(detailItem)}
+        onDelete={() => detailItem && removeItem(detailItem)}
+      />
       <WishSheet
         open={sheetOpen}
         edit={editing}
