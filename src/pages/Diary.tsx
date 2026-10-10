@@ -20,8 +20,8 @@ const PAGE = 30
  * (5 아주 좋음→행복, 4 좋음→감동, 3 보통→보통, 2 별로→슬픔, 1 힘듦→멘붕)
  */
 export const MOODS: { v: number; emoji: string; label: string; color: string; good?: boolean }[] = [
-  { v: 5, emoji: '😊', label: '행복', color: '#F3CE62', good: true },
-  { v: 3, emoji: '😐', label: '보통', color: '#C7CE9A' },
+  { v: 5, emoji: '😊', label: '행복', color: '#C7CE9A', good: true },
+  { v: 3, emoji: '😐', label: '보통', color: '#F3CE62' },
   { v: 2, emoji: '😢', label: '슬픔', color: '#A3C4EB' },
   { v: 1, emoji: '🤯', label: '멘붕', color: '#D1CDC6' },
   { v: 4, emoji: '🥹', label: '감동', color: '#E9A8B5', good: true },
